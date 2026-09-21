@@ -528,7 +528,7 @@ async function handleAPI(request, env, ctx) {
   const method = request.method;
 
   if (method === "GET" && path === "health") {
-    return json(200,{ok:true,service:"solo-tinta-ink",date:todayAR()});
+    return json(200,{ok:true,service:"solo-tinta-ink",build:"2026-09-21-3",date:todayAR()});
   }
 
   if (method === "POST" && path === "login") {
@@ -919,6 +919,40 @@ Cualquier consulta avísame! Si te parece podemos reservar una fecha y hora
     return json(200,{ok:true,id});
   }
 
+  if (method === "DELETE" && path === "admin/stock") {
+    const body = await parseJSON(request);
+    const id = String(body.id || "");
+    if (!id) return json(400,{error:"Falta el insumo."});
+    const item = await db.prepare("SELECT id FROM stock_items WHERE id=?").bind(id).first();
+    if (!item) return json(404,{error:"Insumo no encontrado."});
+    await db.prepare("DELETE FROM stock_movements WHERE stock_item_id=?").bind(id).run();
+    await db.prepare("DELETE FROM stock_items WHERE id=?").bind(id).run();
+    return json(200,{ok:true});
+  }
+
+  if (method === "POST" && path === "admin/stock/adjust") {
+    const body = await parseJSON(request);
+    const id = String(body.id || "");
+    const delta = Number(body.delta);
+    if (!id || !Number.isFinite(delta) || delta === 0) return json(400,{error:"Cantidad inválida."});
+    const item = await db.prepare("SELECT * FROM stock_items WHERE id=?").bind(id).first();
+    if (!item) return json(404,{error:"Insumo no encontrado."});
+    if (Number(item.quantity) + delta < 0) {
+      return json(409,{error:`No podés restar más de lo que hay (${item.quantity}).`});
+    }
+    // El WHERE evita que dos pedidos simultáneos dejen el stock en negativo.
+    const r = await db.prepare(`
+      UPDATE stock_items SET quantity=quantity+?,updated_at=CURRENT_TIMESTAMP
+      WHERE id=? AND quantity+? >= 0
+    `).bind(delta,id,delta).run();
+    if (!r?.meta?.changes) return json(409,{error:"El stock cambió. Probá de nuevo."});
+    await db.prepare(`
+      INSERT INTO stock_movements(id,stock_item_id,type,quantity,note)
+      VALUES(?,?,'adjustment',?,?)
+    `).bind(uid("sm"),id,delta,String(body.note || "Ajuste manual")).run();
+    return json(200,{ok:true});
+  }
+
   if (method === "POST" && path === "admin/stock/restock") {
     const body = await parseJSON(request);
     const id = String(body.id || "");
@@ -988,7 +1022,14 @@ export default {
           : url.pathname === "/gestion" || url.pathname === "/gestion/"
             ? "/gestion.html"
             : url.pathname;
-        return env.ASSETS.fetch(new Request(new URL(assetPath, request.url), request));
+        const assetRes = await env.ASSETS.fetch(new Request(new URL(assetPath, request.url), request));
+        if (assetPath.endsWith(".html")) {
+          // Evita que el celular muestre una versión vieja guardada en caché.
+          const h = new Headers(assetRes.headers);
+          h.set("cache-control","no-cache");
+          return new Response(assetRes.body,{status:assetRes.status,headers:h});
+        }
+        return assetRes;
       }
       return new Response("No encontrado",{status:404});
     } catch (e) {
