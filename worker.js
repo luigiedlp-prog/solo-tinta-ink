@@ -354,6 +354,8 @@ async function adminData(db) {
 }
 
 async function acquireDayLock(db, date) {
+  // Limpia locks abandonados por una caída o interrupción anterior.
+  await db.prepare("DELETE FROM schedule_locks WHERE created_at < datetime('now', '-2 minutes')").run();
   const token = uid("lock");
   const r = await db.prepare(
     "INSERT OR IGNORE INTO schedule_locks(date,token) VALUES(?,?)"
@@ -605,7 +607,7 @@ async function handleAPI(request, env, ctx) {
 
   if (method === "GET" && path === "admin/finance") {
     if (!(await isAdmin(request,db))) return json(401,{error:"No autorizado"});
-    const month = /^\\d{4}-\\d{2}$/.test(url.searchParams.get("month") || "")
+    const month = /^\d{4}-\d{2}$/.test(url.searchParams.get("month") || "")
       ? url.searchParams.get("month")
       : todayAR().slice(0,7);
 
