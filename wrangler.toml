@@ -1,0 +1,23 @@
+name = "solo-tinta-ink"
+main = "worker.js"
+compatibility_date = "2026-09-20"
+
+[triggers]
+crons = ["*/5 * * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "solo-tinta-ink"
+database_id = "REEMPLAZAR_CON_DATABASE_ID"
+
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "solo-tinta-ink"
+
+# Producción: usar el mismo dominio para /reservar y /gestion.
+# No se necesitan CORS abiertos si el frontend es servido por este Worker.
+
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
