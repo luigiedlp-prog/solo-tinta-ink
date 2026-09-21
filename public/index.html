@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>Reservar · Solo Tinta Ink</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;0,700;1,400&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme: dark;
+  --bg:#000000;
+  --glass:rgba(20,18,17,.5);
+  --sep:rgba(255,255,255,.1);
+  --sep-bright:rgba(255,255,255,.16);
+  --label:#ffffff;
+  --label2:rgba(235,235,245,.64);
+  --label3:rgba(235,235,245,.34);
+  --tint:#c23349;
+  --tint-bright:#ea3f58;
+  --tint-glow:#ff2d4d;
+  --tint-press:#9c2939;
+  --serif:'Fraunces',serif;
+  --sans:'Inter',-apple-system,sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html{scroll-behavior:smooth;}
+body{
+  margin:0;color:var(--label);font-family:var(--sans);min-height:100vh;-webkit-font-smoothing:antialiased;
+  background:#020202;overflow-x:hidden;position:relative;
+}
+.bgLayer{position:fixed;inset:0;overflow:hidden;z-index:-1;pointer-events:none;isolation:isolate;}
+.blob{position:absolute;border-radius:50%;filter:blur(95px);}
+.blob1{width:260px;height:260px;top:-60px;left:-60px;background:var(--tint-glow);opacity:.4;}
+.blob2{width:220px;height:220px;top:420px;right:-70px;background:#f2efe9;opacity:.13;}
+.blob3{width:300px;height:220px;bottom:-40px;left:20%;background:var(--tint-glow);opacity:.26;}
+
+.wrap{width:min(600px,100%);margin:auto;padding-bottom:env(safe-area-inset-bottom);position:relative;z-index:1;}
+
+/* Nav bar */
+.navbar{
+  position:sticky;top:0;z-index:6;display:flex;align-items:center;justify-content:space-between;
+  padding:calc(10px + env(safe-area-inset-top)) 16px 10px;
+  background:rgba(0,0,0,.42);backdrop-filter:blur(28px) saturate(1.7);-webkit-backdrop-filter:blur(28px) saturate(1.7);
+  border-bottom:1px solid var(--sep);
+}
+.navTitle{font-family:var(--serif);font-weight:600;font-style:italic;font-size:19px;}
+.navBtn{color:var(--tint-bright);font-size:15px;font-weight:500;background:none;border:none;padding:4px 0;font-family:var(--sans);display:flex;align-items:center;gap:5px;}
+.navBtn:active{opacity:.5;}
+
+/* Large title */
+.largeTitle{padding:24px 16px 4px;}
+.largeTitle h1{margin:0;font-family:var(--serif);font-weight:700;font-size:38px;letter-spacing:-.3px;line-height:1.05;text-shadow:0 2px 40px rgba(255,45,77,.35);}
+.largeTitle p{margin:10px 0 0;color:var(--label2);font-size:14.5px;line-height:1.55;max-width:40ch;font-weight:400;}
+
+/* Sections */
+.sectionCaption{margin:28px 16px 9px;font-size:12.5px;font-weight:700;letter-spacing:.4px;color:var(--label3);text-transform:uppercase;}
+.group{
+  position:relative;background:var(--glass);border-radius:18px;margin:0 16px;overflow:hidden;
+  border:1px solid var(--sep-bright);box-shadow:0 24px 60px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.1);
+  backdrop-filter:blur(38px) saturate(1.7);-webkit-backdrop-filter:blur(38px) saturate(1.7);
+}
+
+/* Gallery grid inside group */
+.gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5px;background:var(--sep);}
+.tile{position:relative;aspect-ratio:1/1;overflow:hidden;background:linear-gradient(155deg,rgba(255,255,255,.08),rgba(0,0,0,.4));}
+.tile::after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 30% 20%,rgba(255,255,255,.1),transparent 55%);}
+.tile svg{position:absolute;inset:0;width:100%;height:100%;}
+.tile .lbl{position:absolute;left:7px;bottom:6px;font-size:9px;color:var(--label3);font-weight:500;}
+.galleryFoot{padding:11px 14px;font-size:11.5px;color:var(--label3);}
+
+/* Rows (grouped list) */
+.rowStack{display:flex;flex-direction:column;padding:12px 16px;border-bottom:1px solid var(--sep);}
+.rowStack:last-child{border-bottom:none;}
+.rowLabel{font-size:13px;color:var(--label2);margin-bottom:5px;font-weight:500;}
+.rowStack input,.rowStack textarea{
+  border:none;background:transparent;color:var(--label);font-family:var(--sans);
+  font-size:16px;padding:0;outline:0;width:100%;font-weight:500;
+}
+.rowStack textarea{resize:none;min-height:64px;line-height:1.45;font-family:var(--sans);}
+.rowStack input::placeholder,.rowStack textarea::placeholder{color:var(--label3);font-weight:400;}
+
+/* segmented control */
+.segmented{display:flex;background:rgba(255,255,255,.08);backdrop-filter:blur(14px);border-radius:10px;padding:3px;gap:2px;margin-top:5px;border:1px solid var(--sep-bright);}
+.seg{flex:1;text-align:center;padding:8px 4px;border-radius:8px;font-size:13px;color:var(--label2);font-weight:500;transition:background .15s;}
+.seg.active{background:linear-gradient(180deg,var(--tint-bright),var(--tint));color:#fff;font-weight:700;box-shadow:0 8px 22px rgba(255,45,77,.5);}
+
+/* upload row */
+.uploadRow{display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;}
+.uploadRow input{display:none;}
+.uploadIcon{width:28px;height:28px;flex:0 0 auto;color:var(--tint-bright);filter:drop-shadow(0 0 14px rgba(255,45,77,.6));}
+.uploadText{flex:1;min-width:0;}
+.uploadTitle{font-size:16px;font-weight:500;}
+.uploadSub{font-size:12.5px;color:var(--label3);margin-top:2px;display:none;}
+.uploadSub.show{display:block;}
+.chev{width:9px;height:14px;flex:0 0 auto;color:var(--label3);}
+
+.footnote{margin:16px 16px 0;font-size:12.5px;color:var(--label3);line-height:1.55;}
+
+.btn{width:100%;padding:15px;border-radius:15px;font-size:17px;font-weight:700;border:none;font-family:var(--sans);}
+.btnFilled{background:linear-gradient(180deg,var(--tint-bright),var(--tint));color:#fff;box-shadow:0 18px 44px rgba(255,45,77,.55);}
+.btnFilled:active{background:var(--tint-press);transform:scale(.985);}
+.btnPlain{background:none;color:var(--tint-bright);font-weight:600;font-size:16px;padding:12px;}
+.btnPlain:active{opacity:.5;}
+
+/* sheet */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);display:none;align-items:flex-end;justify-content:center;z-index:10;}
+.overlay.show{display:flex;}
+.grabber{width:36px;height:5px;border-radius:3px;background:var(--label3);margin:9px auto 6px;}
+.sheet{
+  width:min(600px,100%);background:rgba(15,14,15,.7);backdrop-filter:blur(40px) saturate(1.7);-webkit-backdrop-filter:blur(40px) saturate(1.7);
+  border-radius:22px 22px 0 0;border:1px solid var(--sep-bright);border-bottom:none;
+  padding:0 20px calc(24px + env(safe-area-inset-bottom));animation:up .3s cubic-bezier(.32,.72,0,1);
+  box-shadow:0 -30px 80px rgba(0,0,0,.7);
+}
+@keyframes up{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.sheetBody{text-align:center;padding:6px 0 4px;}
+.checkIcon{width:58px;height:58px;margin:8px auto 14px;border-radius:18px;background:rgba(255,45,77,.2);border:1px solid rgba(255,45,77,.5);display:grid;place-items:center;box-shadow:0 0 40px rgba(255,45,77,.4);}
+.checkIcon svg{width:26px;height:26px;color:var(--tint-bright);}
+.sheet h3{font-family:var(--serif);font-weight:700;font-size:23px;margin:0 0 6px;}
+.sheet p{margin:0 auto 18px;color:var(--label2);font-size:14px;line-height:1.5;max-width:34ch;}
+.ticket{background:rgba(255,255,255,.05);border:1px solid var(--sep-bright);border-radius:13px;text-align:left;margin-bottom:16px;overflow:hidden;}
+.trow{display:flex;justify-content:space-between;gap:10px;padding:12px 14px;border-bottom:1px solid var(--sep);font-size:14.5px;}
+.trow:last-child{border-bottom:none;}
+.trow span{color:var(--label2);}
+.trow b{font-weight:600;}
+</style>
+</head>
+<body>
+<div class="bgLayer">
+  <div class="blob blob1"></div>
+  <div class="blob blob2"></div>
+  <div class="blob blob3"></div>
+</div>
+<div class="wrap">
+
+  <div class="navbar">
+    <div class="navTitle">Solo Tinta Ink</div>
+  </div>
+
+  <div class="largeTitle">
+    <h1>Contanos tu idea</h1>
+    <a class="btn btnFilled" href="#quoteForm" style="display:block;text-align:center;text-decoration:none;margin-top:18px">Pedir presupuesto</a>
+    <p>Te respondemos por WhatsApp con precio y duración estimada. No se cobra nada al enviar esto.</p>
+  </div>
+
+  <div class="sectionCaption">Trabajos recientes</div>
+  <div class="group">
+    <div class="gallery">
+      <div class="tile"><svg viewBox="0 0 100 100"><path d="M20 20 Q50 10 55 45 T50 90" fill="none" stroke="#6a6663" stroke-width="1.1"/></svg><span class="lbl">fineline</span></div>
+      <div class="tile"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="26" fill="none" stroke="#6a6663" stroke-width="1.1"/><circle cx="50" cy="50" r="16" fill="none" stroke="#525049" stroke-width="0.8"/></svg><span class="lbl">black&amp;grey</span></div>
+      <div class="tile"><svg viewBox="0 0 100 100"><path d="M18 80 L40 22 L62 80 M28 58 L52 58" fill="none" stroke="#6a6663" stroke-width="1.1"/></svg><span class="lbl">realismo</span></div>
+      <div class="tile"><svg viewBox="0 0 100 100"><path d="M12 25 Q50 55 20 80 Q50 55 88 85" fill="none" stroke="#6a6663" stroke-width="1.1"/></svg><span class="lbl">fineline</span></div>
+      <div class="tile"><svg viewBox="0 0 100 100"><rect x="28" y="22" width="44" height="58" rx="2" fill="none" stroke="#6a6663" stroke-width="1.1"/><line x1="28" y1="42" x2="72" y2="42" stroke="#525049" stroke-width="0.8"/></svg><span class="lbl">retrato</span></div>
+      <div class="tile"><svg viewBox="0 0 100 100"><path d="M20 35 Q50 18 80 35 Q62 60 80 85 Q50 76 20 85 Q38 60 20 35 Z" fill="none" stroke="#6a6663" stroke-width="1.1"/></svg><span class="lbl">black&amp;grey</span></div>
+    </div>
+    <div class="galleryFoot">Placeholders — acá van los trabajos reales de Felipe</div>
+  </div>
+
+  <div class="sectionCaption">Tu idea</div>
+  <div class="group" id="quoteForm">
+    <div class="rowStack">
+      <div class="rowLabel">Nombre</div>
+      <input type="text" placeholder="Tu nombre" id="fNombre">
+    </div>
+    <div class="rowStack">
+      <div class="rowLabel">WhatsApp</div>
+      <input type="tel" placeholder="11 2345 6789" id="fWa">
+    </div>
+    <div class="rowStack">
+      <div class="rowLabel">Zona del cuerpo</div>
+      <input type="text" placeholder="Antebrazo, espalda..." id="fZona">
+    </div>
+    <div class="rowStack">
+      <div class="rowLabel">Tamaño aproximado</div>
+      <div class="segmented" id="segmented">
+        <div class="seg active" data-v="Chico">Chico</div>
+        <div class="seg" data-v="Mediano">Mediano</div>
+        <div class="seg" data-v="Grande">Grande</div>
+        <div class="seg" data-v="No sé">No sé</div>
+      </div>
+    </div>
+    <div class="rowStack">
+      <div class="rowLabel">Descripción</div>
+      <textarea placeholder="Qué te gustaría tatuarte, estilo, referencias..." id="fIdea"></textarea>
+    </div>
+  </div>
+
+  <div class="sectionCaption">Referencia visual</div>
+  <div class="group">
+    <label class="uploadRow" id="uploadRow">
+      <input type="file" accept="image/*" id="fileInput">
+      <svg class="uploadIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="M21 15l-5-5-4 4-3-3-6 6"/></svg>
+      <div class="uploadText">
+        <div class="uploadTitle">Adjuntar foto de referencia</div>
+        <div class="uploadSub" id="fileSub"></div>
+      </div>
+      <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 5l7 7-7 7"/></svg>
+    </label>
+  </div>
+
+  <p class="footnote">Esto no reserva una fecha todavía — es una solicitud de presupuesto. Felipe coordina día y hora por WhatsApp una vez que te pasa el precio.</p>
+  <div style="padding:8px 0 26px"><button class="btn btnFilled" id="sendBtn" style="display:block;width:100%">Pedir presupuesto</button></div>
+
+</div>
+
+<div class="overlay" id="successOverlay" onclick="if(event.target===this) document.getElementById('successOverlay').classList.remove('show')">
+  <div class="sheet">
+    <div class="grabber"></div>
+    <div class="sheetBody">
+      <div class="checkIcon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg></div>
+      <h3>Solicitud enviada</h3>
+      <p>Felipe va a revisar tu idea y te escribe por WhatsApp con precio y duración estimada.</p>
+      <div class="ticket">
+        <div class="trow"><span>Zona</span><b id="tZona">—</b></div>
+        <div class="trow"><span>Tamaño</span><b id="tTamano">Chico</b></div>
+        <div class="trow"><span>Referencia</span><b id="tFile">Sin adjuntar</b></div>
+      </div>
+      <button class="btn btnPlain" onclick="document.getElementById('successOverlay').classList.remove('show')">Volver</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API='/api';
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function api(path,opts={}){const r=await fetch(API+path,opts);let d={};try{d=await r.json()}catch{}if(!r.ok)throw new Error(d.error||'No se pudo completar la operación.');return d}
+let size='Chico';
+document.getElementById('segmented').addEventListener('click',e=>{const seg=e.target.closest('.seg');if(!seg)return;document.querySelectorAll('.seg').forEach(s=>s.classList.remove('active'));seg.classList.add('active');size=seg.dataset.v});
+const fileInput=$('#fileInput'),fileSub=$('#fileSub');
+fileInput.addEventListener('change',()=>{if(fileInput.files?.[0]){if(fileInput.files[0].size>8*1024*1024){alert('La imagen supera 8 MB.');fileInput.value='';fileSub.textContent='';return}fileSub.textContent=fileInput.files[0].name;fileSub.classList.add('show')}else fileSub.classList.remove('show')});
+function flashInvalid(el){const row=el.closest('.rowStack');row.classList.add('invalid');setTimeout(()=>row.classList.remove('invalid'),700)}
+async function loadPublic(){
+ try{
+  const [s,p]=await Promise.all([api('/settings'),api('/portfolio')]);
+  document.querySelector('.gallery').innerHTML=p.portfolio?.length?p.portfolio.map(x=>`<div class="tile"><img src="${esc(x.image_url)}" alt="Trabajo de Solo Tinta Ink" style="width:100%;height:100%;object-fit:cover;border-radius:12px"><span class="lbl">${esc(x.description||'Solo Tinta Ink')}</span></div>`).join(''):'<div class="galleryFoot">Todavía no hay trabajos cargados.</div>';
+  document.querySelector('.galleryFoot')?.remove();
+  const about=document.createElement('div');about.className='group';about.innerHTML=`<div style="padding:16px"><div style="font-family:var(--serif);font-size:21px;margin-bottom:7px">Sobre el estudio</div><div style="color:var(--label2);line-height:1.55;font-size:14px">${esc(s.description||'Estudio de tatuajes de Felipe Herrera en Pergamino.')}</div>${s.address?`<div style="margin-top:12px;color:var(--label2)">📍 ${esc(s.address)}</div>`:''}${s.maps_url?`<a href="${esc(s.maps_url)}" target="_blank" rel="noopener" style="display:inline-block;margin-top:10px;color:var(--tint-bright)">Ver ubicación</a>`:''}</div>`;
+  const caption=document.createElement('div');caption.className='sectionCaption';caption.textContent='Sobre el estudio';
+  document.querySelector('.footnote').parentNode.insertBefore(caption,document.querySelector('.footnote'));document.querySelector('.footnote').parentNode.insertBefore(about,document.querySelector('.footnote'));
+  if(s.instagram){const ig=document.createElement('a');ig.href='https://instagram.com/'+s.instagram.replace(/^@/,'');ig.target='_blank';ig.rel='noopener';ig.textContent=s.instagram;ig.style='display:block;text-align:center;color:var(--tint-bright);margin:18px 0 0;text-decoration:none';about.after(ig)}
+ }catch(e){console.warn(e)}
+}
+$('#sendBtn').addEventListener('click',async()=>{
+ const nombre=$('#fNombre'),wa=$('#fWa'),idea=$('#fIdea');let ok=true;[nombre,wa,idea].forEach(el=>{if(!el.value.trim()){flashInvalid(el);ok=false}});if(!ok)return;
+ const fd=new FormData();fd.append('name',nombre.value.trim());fd.append('whatsapp',wa.value.trim());fd.append('description',idea.value.trim());fd.append('body_area',$('#fZona').value.trim());fd.append('size',size);if(fileInput.files[0])fd.append('reference_image',fileInput.files[0]);
+ const btn=$('#sendBtn');btn.disabled=true;btn.textContent='Enviando…';
+ try{await api('/quote',{method:'POST',body:fd});$('#tZona').textContent=$('#fZona').value||'—';$('#tTamano').textContent=size;$('#tFile').textContent=fileInput.files[0]?.name||'Sin adjuntar';$('#successOverlay').classList.add('show');document.querySelectorAll('#fNombre,#fWa,#fZona,#fIdea').forEach(x=>x.value='');fileInput.value='';fileSub.textContent='';}
+ catch(e){alert(e.message)}finally{btn.disabled=false;btn.textContent='Pedir presupuesto'}
+});
+loadPublic();
+</script>
+</body>
+</html>

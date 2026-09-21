@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>Gestión · Solo Tinta Ink</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;0,700;1,400&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme: dark;
+  --bg:#000000;
+  --glass:rgba(20,18,17,.5);
+  --sep:rgba(255,255,255,.1);
+  --sep-bright:rgba(255,255,255,.16);
+  --label:#ffffff;
+  --label2:rgba(235,235,245,.64);
+  --label3:rgba(235,235,245,.34);
+  --tint:#c23349;
+  --tint-bright:#ea3f58;
+  --tint-glow:#ff2d4d;
+  --tint-press:#9c2939;
+  --green:#32d366;
+  --serif:'Fraunces',serif;
+  --sans:'Inter',-apple-system,sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html{scroll-behavior:smooth;}
+body{margin:0;color:var(--label);font-family:var(--sans);min-height:100vh;-webkit-font-smoothing:antialiased;background:#020202;overflow-x:hidden;}
+.bgLayer{position:fixed;inset:0;overflow:hidden;z-index:-1;pointer-events:none;isolation:isolate;}
+.blob{position:absolute;border-radius:50%;filter:blur(95px);}
+.blob1{width:260px;height:260px;top:-60px;left:-60px;background:var(--tint-glow);opacity:.4;}
+.blob2{width:220px;height:220px;top:420px;right:-70px;background:#f2efe9;opacity:.13;}
+.blob3{width:300px;height:220px;bottom:-40px;left:20%;background:var(--tint-glow);opacity:.26;}
+.wrap{width:min(600px,100%);margin:auto;position:relative;z-index:1;}
+
+/* ---------- LOGIN ---------- */
+#loginScreen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;position:relative;z-index:1;}
+.loginBrand{font-family:var(--serif);font-style:italic;font-weight:700;font-size:30px;margin-bottom:6px;}
+.loginSub{color:var(--label2);font-size:13.5px;margin-bottom:44px;}
+.dots{display:flex;gap:16px;margin-bottom:40px;}
+.dot{width:14px;height:14px;border-radius:50%;border:1px solid var(--sep-bright);background:transparent;transition:background .15s,box-shadow .15s;}
+.dot.filled{background:var(--tint-bright);box-shadow:0 0 14px rgba(255,45,77,.6);border-color:var(--tint-bright);}
+.dots.shake{animation:shake .35s;}
+@keyframes shake{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+.pinpad{display:grid;grid-template-columns:repeat(3,72px);gap:18px;}
+.key{width:72px;height:72px;border-radius:50%;background:rgba(255,255,255,.06);border:1px solid var(--sep);color:var(--label);font-size:26px;font-weight:500;font-family:var(--sans);backdrop-filter:blur(10px);}
+.key:active{background:rgba(255,255,255,.14);}
+.key.ghost{background:none;border:none;}
+
+/* ---------- APP SHELL ---------- */
+#app{display:none;}
+.navbar{
+  position:sticky;top:0;z-index:6;display:flex;align-items:center;justify-content:space-between;
+  padding:calc(10px + env(safe-area-inset-top)) 16px 12px;
+  background:rgba(0,0,0,.42);backdrop-filter:blur(28px) saturate(1.7);-webkit-backdrop-filter:blur(28px) saturate(1.7);
+  border-bottom:1px solid var(--sep);
+}
+.navTitle{font-family:var(--serif);font-weight:700;font-size:22px;}
+.navSub{color:var(--tint-bright);font-size:13px;font-weight:600;}
+.screen{display:none;padding-bottom:110px;}
+.screen.active{display:block;}
+.sectionCaption{margin:22px 16px 9px;font-size:12.5px;font-weight:700;letter-spacing:.4px;color:var(--label3);text-transform:uppercase;}
+.group{
+  position:relative;background:var(--glass);border-radius:18px;margin:0 16px 14px;overflow:hidden;
+  border:1px solid var(--sep-bright);box-shadow:0 24px 60px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.1);
+  backdrop-filter:blur(38px) saturate(1.7);-webkit-backdrop-filter:blur(38px) saturate(1.7);
+}
+
+/* ---------- PRESUPUESTOS ---------- */
+.reqCard{padding:15px 16px;border-bottom:1px solid var(--sep);}
+.reqCard:last-child{border-bottom:none;}
+.reqTop{display:flex;justify-content:space-between;align-items:start;gap:10px;}
+.reqName{font-size:16px;font-weight:700;}
+.reqMeta{font-size:12.5px;color:var(--label2);margin-top:2px;}
+.reqTime{font-size:11.5px;color:var(--label3);white-space:nowrap;}
+.reqDesc{font-size:13.5px;color:var(--label2);margin-top:9px;line-height:1.5;}
+.reqTags{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;}
+.tag{background:rgba(255,255,255,.07);border:1px solid var(--sep);border-radius:99px;padding:4px 10px;font-size:11px;color:var(--label2);display:flex;align-items:center;gap:4px;}
+.reqActions{display:flex;gap:8px;margin-top:12px;}
+.miniBtn{flex:1;padding:10px;border-radius:11px;font-size:13.5px;font-weight:600;font-family:var(--sans);border:none;}
+.miniBtn.primary{background:linear-gradient(180deg,var(--tint-bright),var(--tint));color:#fff;box-shadow:0 10px 24px rgba(255,45,77,.4);}
+.miniBtn.ghost{background:rgba(255,255,255,.06);color:var(--label2);border:1px solid var(--sep);}
+.badge{background:var(--tint-bright);color:#fff;font-size:10.5px;font-weight:700;border-radius:99px;padding:2px 7px;box-shadow:0 0 10px rgba(255,45,77,.6);}
+.confirmBanner{display:none;position:fixed;left:16px;right:16px;top:calc(64px + env(safe-area-inset-top));z-index:8;padding:12px 14px;border-radius:12px;background:rgba(50,211,102,.16);border:1px solid rgba(50,211,102,.45);color:#8fe6ac;font-size:13.5px;font-weight:600;box-shadow:0 14px 34px rgba(0,0,0,.4);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);}
+.confirmBanner.show{display:block;}
+.rowStack.invalid{background:rgba(255,80,80,.1);}
+
+/* ---------- CALENDARIO ---------- */
+.calHead{display:flex;justify-content:space-between;align-items:center;padding:14px 16px 8px;}
+.calMonth{font-family:var(--serif);font-weight:700;font-size:19px;}
+.calArrow{background:rgba(255,255,255,.06);border:1px solid var(--sep);color:var(--label2);width:32px;height:32px;border-radius:50%;font-size:16px;font-family:var(--sans);}
+.calArrow:active{background:rgba(255,255,255,.16);}
+.weekRow{display:grid;grid-template-columns:repeat(7,1fr);padding:0 16px;margin-bottom:6px;}
+.weekRow span{text-align:center;font-size:10.5px;color:var(--label3);font-weight:600;}
+.calGrid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;padding:0 16px 8px;}
+.day{aspect-ratio:1/1;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:14px;background:rgba(255,255,255,.04);border:1px solid transparent;position:relative;}
+.day.other{visibility:hidden;}
+.day.closed{color:var(--label3);background:rgba(255,255,255,.015);}
+.day.today{border-color:var(--tint-bright);box-shadow:0 0 12px rgba(255,45,77,.35);font-weight:700;}
+.day.full{background:rgba(255,255,255,.02);color:var(--label3);}
+.day .fullLbl{font-size:7px;letter-spacing:.2px;color:var(--tint-bright);text-transform:uppercase;}
+.dayDot{width:5px;height:5px;border-radius:50%;background:var(--tint-bright);box-shadow:0 0 6px rgba(255,45,77,.7);}
+.dayCount{min-width:14px;height:14px;padding:0 3px;border-radius:7px;background:var(--tint-bright);color:#fff;font-size:8px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 0 6px rgba(255,45,77,.7);}
+.day.selected{background:linear-gradient(180deg,var(--tint-bright),var(--tint));color:#fff;box-shadow:0 8px 22px rgba(255,45,77,.5);}
+.day.selected .dayDot{background:#fff;}
+.dayAgenda{padding:4px 16px 14px;}
+.agendaRow{display:flex;justify-content:space-between;align-items:center;padding:11px 14px;border-bottom:1px solid var(--sep);font-size:14px;}
+.agendaRow:last-child{border-bottom:none;}
+.agendaRow span{color:var(--label2);font-size:12.5px;}
+.fullToggleRow{display:flex;justify-content:space-between;align-items:center;padding:13px 16px;}
+.fullToggleRow .t{font-size:15px;}
+.fullToggleRow .s{font-size:12px;color:var(--label3);margin-top:2px;}
+.switch{width:46px;height:28px;border-radius:99px;background:rgba(255,255,255,.12);position:relative;border:1px solid var(--sep);flex:0 0 auto;}
+.switch::after{content:"";position:absolute;width:22px;height:22px;border-radius:50%;background:#fff;top:2px;left:2px;transition:.2s;}
+.switch.on{background:linear-gradient(180deg,var(--tint-bright),var(--tint));}
+.switch.on::after{left:21px;}
+
+/* ---------- FINANZAS ---------- */
+.finTotal{padding:18px 16px 6px;}
+.finLabel{font-size:12.5px;color:var(--label3);text-transform:uppercase;letter-spacing:.3px;font-weight:700;}
+.finAmount{font-family:var(--serif);font-weight:700;font-size:34px;margin-top:4px;}
+.ledgerRow{display:flex;justify-content:space-between;align-items:center;padding:13px 16px;border-bottom:1px solid var(--sep);}
+.ledgerRow:last-child{border-bottom:none;}
+.ledgerDate{font-size:15px;font-weight:600;}
+.ledgerSub{font-size:12px;color:var(--label3);margin-top:2px;}
+.ledgerAmount{font-size:15px;font-weight:700;}
+.statsGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:0 16px;margin:4px 0 0;}
+.statCard{background:var(--glass);border:1px solid var(--sep-bright);border-radius:14px;padding:12px 6px;text-align:center;backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);}
+.statNum{font-family:var(--serif);font-weight:700;font-size:15px;line-height:1.2;}
+.statLbl{font-size:9.5px;color:var(--label3);margin-top:4px;text-transform:uppercase;letter-spacing:.2px;}
+
+.segmented{display:flex;background:rgba(255,255,255,.08);backdrop-filter:blur(14px);border-radius:10px;padding:3px;gap:2px;border:1px solid var(--sep-bright);}
+.seg{flex:1;text-align:center;padding:8px 4px;border-radius:8px;font-size:13px;color:var(--label2);font-weight:500;}
+.seg.active{background:linear-gradient(180deg,var(--tint-bright),var(--tint));color:#fff;font-weight:700;box-shadow:0 8px 22px rgba(255,45,77,.5);}
+
+.stockRow{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--sep);}
+.stockRow:last-child{border-bottom:none;}
+.stockInfo{flex:1;min-width:0;}
+.stockName{font-size:15px;font-weight:600;}
+.stockQty{font-size:12.5px;color:var(--label3);margin-top:2px;}
+.stockBadge{font-size:10.5px;font-weight:700;padding:3px 8px;border-radius:99px;white-space:nowrap;}
+.stockBadge.ok{background:rgba(50,211,102,.15);color:var(--green);}
+.stockBadge.low{background:rgba(255,45,77,.18);color:var(--tint-bright);}
+.stockCtrls{display:flex;gap:6px;}
+.stockCtrls button{width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,.08);border:1px solid var(--sep);color:var(--label);font-size:16px;font-family:var(--sans);}
+.stockCtrls button:active{background:rgba(255,255,255,.16);}
+
+/* ---------- AJUSTES ---------- */
+.settingRow{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--sep);}
+.settingRow:last-child{border-bottom:none;}
+.settingIcon{width:22px;height:22px;color:var(--tint-bright);flex:0 0 auto;}
+.settingText{flex:1;font-size:15.5px;}
+.settingChev{width:8px;height:13px;color:var(--label3);}
+.settingRow.danger .settingText{color:#ff6b6b;}
+.settingRow.danger .settingIcon{color:#ff6b6b;}
+
+/* ---------- TAB BAR ---------- */
+.tabbar{
+  position:fixed;left:0;right:0;bottom:0;z-index:7;display:flex;
+  padding:9px 6px calc(9px + env(safe-area-inset-bottom));
+  background:rgba(0,0,0,.55);backdrop-filter:blur(28px) saturate(1.7);-webkit-backdrop-filter:blur(28px) saturate(1.7);
+  border-top:1px solid var(--sep-bright);
+}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--label3);background:none;border:none;font-family:var(--sans);position:relative;}
+.tab svg{width:23px;height:23px;}
+.tab span{font-size:10px;font-weight:600;}
+.tab.active{color:var(--tint-bright);}
+.tabBadge{position:absolute;top:-3px;right:22%;background:var(--tint-bright);color:#fff;font-size:9px;font-weight:700;border-radius:99px;min-width:15px;height:15px;display:flex;align-items:center;justify-content:center;padding:0 3px;box-shadow:0 0 8px rgba(255,45,77,.6);}
+
+/* ---------- SHEET ---------- */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);display:none;align-items:flex-end;justify-content:center;z-index:10;}
+.overlay.show{display:flex;}
+.grabber{width:36px;height:5px;border-radius:3px;background:var(--label3);margin:9px auto 6px;}
+.sheetClose{position:absolute;top:14px;right:16px;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.08);border:1px solid var(--sep-bright);color:var(--label2);font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;z-index:2;}
+.sheetClose:active{background:rgba(255,255,255,.18);}
+.sheet{
+  position:relative;width:min(600px,100%);background:rgba(15,14,15,.82);backdrop-filter:blur(40px) saturate(1.7);-webkit-backdrop-filter:blur(40px) saturate(1.7);
+  border-radius:22px 22px 0 0;border:1px solid var(--sep-bright);border-bottom:none;
+  padding:0 0 calc(24px + env(safe-area-inset-bottom));animation:up .3s cubic-bezier(.32,.72,0,1);
+  box-shadow:0 -30px 80px rgba(0,0,0,.7);max-height:85vh;overflow-y:auto;
+}
+@keyframes up{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.sheetTitle{font-family:var(--serif);font-weight:700;font-size:21px;padding:4px 20px 14px;}
+.rowStack{display:flex;flex-direction:column;padding:12px 20px;border-bottom:1px solid var(--sep);}
+.rowStack:last-child{border-bottom:none;}
+.rowLabel{font-size:13px;color:var(--label2);margin-bottom:5px;font-weight:500;}
+.rowStack input{border:none;background:transparent;color:var(--label);font-family:var(--sans);font-size:16px;padding:0;outline:0;width:100%;font-weight:500;}
+.sheetActions{padding:16px 20px 0;}
+.btn{width:100%;padding:15px;border-radius:15px;font-size:17px;font-weight:700;border:none;font-family:var(--sans);}
+.btnFilled{background:linear-gradient(180deg,var(--tint-bright),var(--tint));color:#fff;box-shadow:0 18px 44px rgba(255,45,77,.55);}
+.btnFilled:active{background:var(--tint-press);}
+.btnDanger{background:rgba(255,80,80,.12);color:#ff6b6b;border:1px solid rgba(255,80,80,.35);}
+.btnDanger:active{background:rgba(255,80,80,.2);}
+.rowStack input:disabled{color:var(--label3);}
+.clientRow{display:flex;justify-content:space-between;align-items:center;padding:13px 20px;border-bottom:1px solid var(--sep);}
+.clientRow:last-child{border-bottom:none;}
+.clientName{font-size:15px;font-weight:600;}
+.clientWa{font-size:12.5px;color:var(--label3);margin-top:2px;}
+</style>
+</head>
+<body>
+<div class="bgLayer"><div class="blob blob1"></div><div class="blob blob2"></div><div class="blob blob3"></div></div>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="loginBrand">Solo Tinta Ink</div>
+  <div class="loginSub">Ingresá tu PIN</div>
+  <div class="dots" id="dots">
+    <div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
+  </div>
+  <div class="pinpad">
+    <button class="key" onclick="press(1)">1</button><button class="key" onclick="press(2)">2</button><button class="key" onclick="press(3)">3</button>
+    <button class="key" onclick="press(4)">4</button><button class="key" onclick="press(5)">5</button><button class="key" onclick="press(6)">6</button>
+    <button class="key" onclick="press(7)">7</button><button class="key" onclick="press(8)">8</button><button class="key" onclick="press(9)">9</button>
+    <button class="key ghost"></button><button class="key" onclick="press(0)">0</button><button class="key" onclick="del()">⌫</button>
+  </div>
+</div>
+
+<!-- APP: el contenido real lo arma render() (más abajo) apenas hay sesión válida -->
+<div id="app" style="display:none"></div>
+
+<script>
+const API='/api';let pin='',D=null,tab='Presupuestos',month=new Date().toISOString().slice(0,7),calDate=new Date();
+const $=s=>document.querySelector(s);const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money=v=>'$'+Number(v||0).toLocaleString('es-AR');
+const dur=v=>{v=Number(v||0);return `${Math.floor(v/60)} h${v%60?' '+String(v%60).padStart(2,'0')+' min':''}`};
+async function api(path,opts={}){const r=await fetch(API+path,opts);let d={};try{d=await r.json()}catch{}if(!r.ok)throw new Error(d.error||'Error de servidor');return d}
+function renderDots(){[0,1,2,3].forEach(i=>document.querySelectorAll('.dot')[i]?.classList.toggle('filled',i<pin.length))}
+function press(n){if(pin.length>=4)return;pin+=n;renderDots();if(pin.length===4)setTimeout(login,80)}function del(){pin=pin.slice(0,-1);renderDots()}
+async function login(){try{await api('/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({pin})});pin='';document.getElementById('loginScreen').style.display='none';await load();}catch(e){pin='';renderDots();alert(e.message)}}
+async function load(){D=await api('/admin/data');render()}
+function showTab(n){tab=n;render()}
+function render(){
+ const app=document.getElementById('app');app.style.display='block';
+ app.innerHTML=`<div class="navbar"><div><div class="navTitle">${tab}</div><div class="navSub">Solo Tinta Ink</div></div><button class="btn btnPlain" onclick="load()">↻</button></div><div id="live"></div><div class="tabbar"><button class="tab ${tab==='Presupuestos'?'active':''}" onclick="showTab('Presupuestos')">Presupuestos</button><button class="tab ${tab==='Calendario'?'active':''}" onclick="showTab('Calendario')">Calendario</button><button class="tab ${tab==='Finanzas'?'active':''}" onclick="showTab('Finanzas')">Finanzas</button><button class="tab ${tab==='Ajustes'?'active':''}" onclick="showTab('Ajustes')">Ajustes</button></div>`;
+ const live=$('#live');if(tab==='Presupuestos')quotesView(live);if(tab==='Calendario')calendarView(live);if(tab==='Finanzas')financeView(live);if(tab==='Ajustes')settingsView(live)
+}
+function quotesView(el){const pending=D.quotes.filter(q=>q.status==='pending_quote'),waiting=D.quotes.filter(q=>q.status==='awaiting_confirmation');el.innerHTML=`<div class="statsGrid" style="grid-template-columns:1fr 1fr"><div class="statCard"><div class="statNum">${pending.length}</div><div class="statLbl">Por cotizar</div></div><div class="statCard"><div class="statNum">${waiting.length}</div><div class="statLbl">Por agendar</div></div></div>${quoteGroup('Pendientes de cotizar',pending,true)}${quoteGroup('Esperando confirmación',waiting,false)}<div class="sectionCaption">Descartados</div><div class="group">${D.quotes.filter(q=>q.status==='discarded').slice(0,20).map(q=>`<div class="reqCard"><div class="reqTop"><b>${esc(q.name)}</b><span>Descartado</span></div><div class="reqDesc">${esc(q.description)}</div></div>`).join('')||'<div class="empty">No hay descartados.</div>'}</div>`}
+function quoteGroup(title,list,canQuote){return `<div class="sectionCaption">${title}</div><div class="group">${list.map(q=>`<div class="reqCard"><div class="reqTop"><div><div class="reqName">${esc(q.name)}</div><div class="reqMeta">${esc(q.whatsapp)}</div></div><div class="reqTime">${new Date(q.created_at).toLocaleDateString('es-AR')}</div></div><div class="reqDesc">${esc(q.description)}</div><div class="reqTags"><span class="tag">📍 ${esc(q.body_area||'—')}</span><span class="tag">📏 ${esc(q.size||'—')}</span>${q.reference_key?'<span class="tag">📎 Referencia</span>':''}</div><div class="sheetActions">${canQuote?`<button class="btn btnFilled" onclick="quote('${q.id}')">Cotizar</button><button class="btn btnPlain" onclick="discard('${q.id}')">Descartar</button>`:`<button class="btn btnFilled" onclick="scheduleQuote('${q.id}')">Agendar</button><button class="btn btnPlain" onclick="cancelQuote('${q.id}')">Cancelar</button>`}</div></div>`).join('')||'<div class="empty">No hay solicitudes.</div>'}</div>`}
+async function discard(id){if(!confirm('¿Descartar presupuesto?'))return;await api('/admin/quote/discard',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id})});await load()}
+async function cancelQuote(id){await discard(id)}
+async function quote(id){const price=prompt('Precio ($):');if(price===null)return;const duration=prompt('Duración (ej. 2:30):');if(duration===null)return;try{await api('/admin/quote/price',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id,price:Number(String(price).replace(/\D/g,'')),duration})});const q=D.quotes.find(x=>x.id===id);const msg=`¡Hola ${q.name}! Soy Feli de Solo Tinta Ink\nTe paso el presupuesto para tu tatuaje: $${Number(String(price).replace(/\D/g,'')).toLocaleString('es-AR')}\nDuración estimada: ${duration.replace(':',' horas y ')}${duration.includes(':')?' minutos':''}\nCualquier consulta avísame! Si te parece podemos reservar una fecha y hora\n¡Muchas gracias!`;window.open('https://wa.me/'+q.whatsapp+'?text='+encodeURIComponent(msg),'_blank');await load()}catch(e){alert(e.message)}}
+async function scheduleQuote(id){const q=D.quotes.find(x=>x.id===id);const date=prompt('Fecha (AAAA-MM-DD):');if(!date)return;const time=prompt('Hora de inicio (HH:MM):');if(!time)return;try{await api('/admin/appointment',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({quote_id:id,client_id:q.client_id,date,start_time:time,duration_minutes:q.duration_minutes,price:q.price})});await load()}catch(e){alert(e.message)}}
+function calendarView(el){const y=calDate.getFullYear(),m=calDate.getMonth(),first=new Date(y,m,1),days=new Date(y,m+1,0).getDate(),lead=(first.getDay()+6)%7;const cells=Array(lead).fill('<div></div>');for(let d=1;d<=days;d++){const k=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`,a=D.appointments.filter(x=>x.date===k&&['scheduled','another_session'].includes(x.status));cells.push(`<button class="day" onclick="day('${k}')"><b>${d}</b>${a.length?`<small>${a.length} turno${a.length>1?'s':''}</small>`:''}</button>`)}el.innerHTML=`<div class="calendarHead"><button class="btn btnPlain" onclick="cal(-1)">‹</button><b>${new Intl.DateTimeFormat('es-AR',{month:'long',year:'numeric'}).format(calDate)}</b><button class="btn btnPlain" onclick="cal(1)">›</button></div><div class="calendarGrid">${cells.join('')}</div><div class="sectionCaption">Hoy · ${D.today}</div><div class="group">${D.appointments.filter(a=>a.date===D.today).sort((a,b)=>a.start_time.localeCompare(b.start_time)).map(a=>appointmentRow(a)).join('')||'<div class="empty">No hay turnos hoy.</div>'}</div>`}
+function cal(d){calDate.setMonth(calDate.getMonth()+d);render()}
+function day(k){const list=D.appointments.filter(a=>a.date===k).sort((a,b)=>a.start_time.localeCompare(b.start_time));const blocked=D.day_blocks?.some?.(x=>x.date===k);const html=`${list.map(appointmentRow).join('')||'<div class="empty">Sin turnos.</div>'}<div class="sheetActions"><button class="btn btnFilled" onclick="newTurn('${k}')">+ Nuevo turno</button>${blocked?`<button class="btn btnPlain" onclick="unblock('${k}')">Quitar agenda llena</button>`:`<button class="btn btnPlain" onclick="block('${k}')">Agenda llena</button>`}</div>`;alert(`Agenda ${k}\n\n`+list.map(a=>`${a.start_time.slice(0,5)} — ${a.name} — ${dur(a.duration_minutes)}`).join('\n'));}
+function appointmentRow(a){return `<div class="reqCard"><div class="reqTop"><div><div class="reqName">${a.start_time.slice(0,5)} — ${esc(a.name)}</div><div class="reqMeta">${dur(a.duration_minutes)} · ${money(a.price)} · ${a.status}</div></div></div><div class="sheetActions">${a.status==='scheduled'?`<button class="btn btnPlain" onclick="complete('${a.id}')">Completado</button><button class="btn btnPlain" onclick="editTurn('${a.id}')">Editar</button><button class="btn btnPlain" onclick="cancelTurn('${a.id}')">Cancelar</button><button class="btn btnPlain" onclick="another('${a.id}')">Otra sesión</button>`:''}</div></div>`}
+async function newTurn(date){const name=prompt('Nombre');if(!name)return;const wa=prompt('WhatsApp');if(!wa)return;const client=D.clients.find(c=>c.whatsapp.replace(/\D/g,'')===wa.replace(/\D/g,''));if(!client){alert('Para crear un turno manual, primero cargá un presupuesto para ese cliente.');return}const time=prompt('Hora HH:MM');const duration=prompt('Duración en minutos');const price=prompt('Precio');try{await api('/admin/appointment',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({client_id:client.id,date,start_time:time,duration_minutes:Number(duration),price:Number(price)})});await load()}catch(e){alert(e.message)}}
+async function editTurn(id){const a=D.appointments.find(x=>x.id===id);const date=prompt('Fecha',a.date),time=prompt('Hora',a.start_time.slice(0,5)),duration=prompt('Duración minutos',a.duration_minutes);if(!date||!time||!duration)return;try{await api('/admin/appointment/edit',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id,date,start_time:time,duration_minutes:Number(duration)})});await load()}catch(e){alert(e.message)}}
+async function cancelTurn(id){if(!confirm('¿Cancelar turno?'))return;try{await api('/admin/appointment/cancel',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id})});await load()}catch(e){alert(e.message)}}
+async function another(id){const note=prompt('Nota opcional');await api('/admin/appointment/another-session',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id,note:note||''})});await load()}
+async function complete(id){const p=prompt('Forma de pago: Efectivo o Transferencia');const payment=/^transfer/i.test(p||'')?'transfer':/^efectivo/i.test(p||'')?'cash':null;if(!payment)return alert('Elegí Efectivo o Transferencia.');try{await api('/admin/appointment/complete',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id,payment_method:payment})});const items=D.stock.map(s=>({id:s.id,qty:Number(prompt(`¿Cuánto se utilizó de ${s.name}? (0 si no se usó)`,0)||0)})).filter(x=>x.qty>0);if(items.length)await api('/admin/stock/use',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({appointment_id:id,items})});await load()}catch(e){alert(e.message)}}
+async function block(date){await api('/admin/day-block',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({date})});await load()}
+async function unblock(date){await api('/admin/day-block',{method:'DELETE',headers:{'content-type':'application/json'},body:JSON.stringify({date})});await load()}
+async function financeView(el){const f=await api('/admin/finance?month='+month);el.innerHTML=`<div class="statsGrid"><div class="statCard"><div class="statNum">${money(f.summary.total_income)}</div><div class="statLbl">Ingresos totales</div></div><div class="statCard"><div class="statNum">${f.summary.tattoos_completed}</div><div class="statLbl">Tatuajes realizados</div></div><div class="statCard"><div class="statNum">${money(f.summary.average_ticket)}</div><div class="statLbl">Promedio por turno</div></div></div><div class="sectionCaption">Detalle diario · ${month}</div><div class="group">${f.daily.map(d=>`<div class="ledgerRow"><div><div class="ledgerDate">${d.date}</div><div class="ledgerSub">${d.completed} realizados · ${d.cancelled} cancelados</div></div><div class="ledgerAmount">${money(d.income)}</div></div>`).join('')||'<div class="empty">Sin movimientos.</div>'}</div><div class="sectionCaption">Stock</div><div class="group">${D.stock.map(s=>`<div class="stockRow"><div class="stockInfo"><div class="stockName">${esc(s.name)}</div><div class="stockQty">${s.quantity} ${esc(s.unit)}</div></div><div class="stockBadge ${Number(s.quantity)<=Number(s.minimum_quantity)?'low':'ok'}">${Number(s.quantity)<=Number(s.minimum_quantity)?'REPONER':'OK'}</div><div class="stockCtrls"><button onclick="restock('${s.id}')">+</button></div></div>`).join('')}</div>`}
+async function restock(id){const q=prompt('Cantidad a reponer');if(!q)return;await api('/admin/stock/restock',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id,quantity:Number(q)})});await load()}
+function settingsView(el){const s=D.settings;el.innerHTML=`<div class="sectionCaption">Estudio</div><div class="group"><div class="settingRow"><div class="settingText"><b>${esc(s.studio_name)}</b><br>${esc(s.artist_name)}</div></div><div class="settingRow"><div class="settingText">${esc(s.description||'Sin descripción')}</div></div><div class="settingRow"><div class="settingText">${esc(s.address||'Dirección pendiente')}</div></div><div class="settingRow"><div class="settingText">Instagram: ${esc(s.instagram||'')}</div></div></div><div class="sectionCaption">Acciones</div><div class="group"><div class="settingRow" onclick="editData()"><div class="settingText">Editar datos del estudio</div></div><div class="settingRow" onclick="changePin()"><div class="settingText">Cambiar PIN</div></div><div class="settingRow danger" onclick="logout()"><div class="settingText">Cerrar sesión</div></div></div>`}
+async function editData(){const s=D.settings;const description=prompt('Descripción',s.description||'');const address=prompt('Dirección',s.address||'');const maps_url=prompt('Google Maps URL',s.maps_url||'');const instagram=prompt('Instagram',s.instagram||'@solo.tinta.ink');await api('/admin/settings',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({description,address,maps_url,instagram})});await load()}
+async function changePin(){const p=prompt('Nuevo PIN de 4 dígitos');if(!/^\d{4}$/.test(p||''))return alert('El PIN debe tener 4 dígitos.');await api('/admin/settings/pin',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({pin:p})});alert('PIN actualizado.');await logout()}
+async function logout(){await api('/logout',{method:'POST'});location.reload()}
+(async()=>{try{await load();document.getElementById('loginScreen').style.display='none'}catch(e){renderDots()}})();
+</script>
+</body>
+</html>
