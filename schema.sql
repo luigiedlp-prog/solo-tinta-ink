@@ -12,6 +12,8 @@ CREATE TABLE IF NOT EXISTS settings (
   address TEXT NOT NULL DEFAULT '',
   maps_url TEXT NOT NULL DEFAULT '',
   instagram TEXT NOT NULL DEFAULT '@solo.tinta.ink',
+  safety_info TEXT NOT NULL DEFAULT '',
+  contact_info TEXT NOT NULL DEFAULT '',
   schedule_json TEXT NOT NULL,
   pin_hash TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -185,17 +187,22 @@ CREATE INDEX IF NOT EXISTS idx_schedule_locks_created
   ON schedule_locks(created_at);
 
 -- Valores iniciales.
+-- Los textos de abajo (descripción, dirección, seguridad, contacto) son de
+-- ejemplo — Feli los puede editar en cualquier momento desde
+-- Gestión > Ajustes > "Editar datos del estudio".
 INSERT OR IGNORE INTO settings
-(id, studio_name, artist_name, description, address, maps_url, instagram, schedule_json, pin_hash)
+(id, studio_name, artist_name, description, address, maps_url, instagram, safety_info, contact_info, schedule_json, pin_hash)
 VALUES
 (
   1,
   'Solo Tinta Ink',
   'Felipe Herrera',
-  '',
-  '',
-  '',
+  'Estudio de tatuajes especializado en fine line, black & grey y realismo. Feli atiende con cita previa, un cliente a la vez, para dar tranquilidad y atención personalizada en cada sesión.',
+  'Av. Colón 1140, Pergamino, Buenos Aires',
+  'https://maps.google.com/?q=Av.+Colón+1140,+Pergamino,+Buenos+Aires',
   '@solo.tinta.ink',
+  'Todo el material de un solo uso (agujas, guantes, campos, vaselina) se abre nuevo delante del cliente y se descarta después de cada sesión. El instrumental reutilizable se esteriliza en autoclave certificado, y se trabaja con tintas homologadas para uso dérmico. Feli mantiene actualizado su curso de bioseguridad para tatuadores.',
+  'WhatsApp del estudio: +54 9 2477 40-1234 · También por Instagram (@solo.tinta.ink)',
   '{"0":[],"1":[["09:30","21:30"]],"2":[["09:30","21:30"]],"3":[["09:30","21:30"]],"4":[["09:30","21:30"]],"5":[["09:30","21:30"]],"6":[["09:30","21:30"]]}',
   'a20c25627ed7bbb6d2b999c589b698e6ecd84384e2e0e510d8869d79a5ad244c'
 );

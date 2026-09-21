@@ -10,14 +10,6 @@ binding = "DB"
 database_name = "solo-tinta-ink"
 database_id = "7784e4a4-eedc-4e01-86c3-d356a0f8c185"
 
-[[r2_buckets]]
-binding = "R2"
-bucket_name = "solo-tinta-ink"
-
-# Producción: usar el mismo dominio para /reservar y /gestion.
-# No se necesitan CORS abiertos si el frontend es servido por este Worker.
-
-
 [assets]
 directory = "./public"
 binding = "ASSETS"

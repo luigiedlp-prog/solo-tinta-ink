@@ -1,10 +1,8 @@
 // Solo Tinta Ink — Cloudflare Worker v1
-// Backend propio: D1 + R2.
+// Backend propio: D1 + Assets estáticos.
 // No incluye promociones, catálogo público de precios ni lógica de seña.
 // IMPORTANTE: reemplazar el PIN inicial en producción mediante /api/admin/settings/pin.
 
-const MAX_REFERENCE_BYTES = 8 * 1024 * 1024;
-const MAX_PORTFOLIO_BYTES = 12 * 1024 * 1024;
 const SESSION_DAYS = 30;
 const MAX_NOTE_LENGTH = 2000;
 
@@ -253,39 +251,48 @@ async function createNotification(db, type, title, body, targetId = null) {
   `).bind(id,type,title,body,targetId).run();
 }
 
-async function createQuote(request, env, db) {
-  if (!(request.headers.get("content-type") || "").includes("multipart/form-data")) {
-    return json(400, {error:"La solicitud debe enviarse como multipart/form-data"});
+function validHttpUrl(value) {
+  try {
+    const u = new URL(String(value || "").trim());
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+async function createQuote(request, db) {
+  const contentType = request.headers.get("content-type") || "";
+  let data = {};
+
+  if (contentType.includes("application/json")) {
+    data = await parseJSON(request);
+  } else if (contentType.includes("multipart/form-data")) {
+    const form = await request.formData();
+    data = Object.fromEntries(form.entries());
+  } else {
+    return json(400, {error:"Enviá los datos como JSON o formulario."});
   }
 
-  const form = await request.formData();
-  const name = String(form.get("name") || "").trim();
-  const whatsapp = cleanWA(form.get("whatsapp"));
-  const description = String(form.get("description") || "").trim();
-  const bodyArea = String(form.get("body_area") || "").trim();
-  const size = String(form.get("size") || "").trim();
+  const name = String(data.name || "").trim();
+  const whatsapp = cleanWA(data.whatsapp);
+  const description = String(data.description || "").trim();
+  const bodyArea = String(data.body_area || "").trim();
+  const size = String(data.size || "").trim();
+  const referenceUrl = String(data.reference_url || data.reference_link || "").trim();
 
   if (!name || name.length > 120 || !validWA(whatsapp) || !description || description.length > 3000) {
     return json(400, {error:"Completá nombre, WhatsApp y descripción correctamente."});
   }
 
-  const client = await upsertClient(db, name, whatsapp);
-  let referenceKey = null;
-  const image = form.get("reference_image");
-
-  if (image && typeof image !== "string") {
-    if (image.size > MAX_REFERENCE_BYTES) {
-      return json(413, {error:"La imagen supera el límite de 8 MB."});
-    }
-    const type = String(image.type || "").toLowerCase();
-    if (!["image/jpeg","image/png","image/webp","image/gif"].includes(type)) {
-      return json(400, {error:"La referencia debe ser una imagen JPG, PNG, WEBP o GIF."});
-    }
-    referenceKey = `references/${new Date().toISOString().slice(0,10)}/${uid("ref")}`;
-    await env.R2.put(referenceKey, image.stream(), {
-      httpMetadata: {contentType:type}
-    });
+  if (referenceUrl && !validHttpUrl(referenceUrl)) {
+    return json(400, {error:"El enlace de referencia debe comenzar con http:// o https://."});
   }
+
+  const client = await upsertClient(db, name, whatsapp);
+
+  // Sin R2: reutilizamos reference_key para guardar únicamente la URL pública.
+  // Así no hace falta migrar la tabla quotes existente.
+  const referenceKey = referenceUrl || null;
 
   const id = uid("q");
   await db.prepare(`
@@ -306,7 +313,7 @@ async function createQuote(request, env, db) {
 }
 
 async function adminData(db) {
-  const [settings, quotes, appointments, clients, portfolio, stock, notifications, followups, dayBlocks] =
+  const [settings, quotes, appointments, clients, stock, notifications, followups, dayBlocks] =
     await Promise.all([
       getSettings(db),
       db.prepare(`
@@ -320,7 +327,6 @@ async function adminData(db) {
         ORDER BY a.date, a.start_time
       `).all(),
       db.prepare("SELECT * FROM clients ORDER BY name").all(),
-      db.prepare("SELECT * FROM portfolio ORDER BY created_at DESC").all(),
       db.prepare("SELECT * FROM stock_items ORDER BY name").all(),
       db.prepare("SELECT * FROM notifications ORDER BY created_at DESC LIMIT 100").all(),
       db.prepare(`
@@ -339,12 +345,13 @@ async function adminData(db) {
       address:settings.address,
       maps_url:settings.maps_url,
       instagram:settings.instagram,
+      safety_info:settings.safety_info,
+      contact_info:settings.contact_info,
       schedule:settings.schedule
     },
     quotes:quotes.results || [],
     appointments:appointments.results || [],
     clients:clients.results || [],
-    portfolio:portfolio.results || [],
     stock:stock.results || [],
     notifications:notifications.results || [],
     followups:followups.results || [],
@@ -477,40 +484,11 @@ async function cancelAppointment(db, body) {
   return {status:200,data:{ok:true}};
 }
 
-async function getReference(env, db, request, id) {
+async function getReference(db, request, id) {
   if (!(await isAdmin(request, db))) return json(401,{error:"No autorizado"});
   const q = await db.prepare("SELECT reference_key FROM quotes WHERE id=?").bind(id).first();
-  if (!q?.reference_key) return new Response("Imagen no encontrada",{status:404});
-  const obj = await env.R2.get(q.reference_key);
-  if (!obj) return new Response("Imagen no encontrada",{status:404});
-  return new Response(obj.body,{
-    headers:{
-      "content-type":obj.httpMetadata?.contentType || "application/octet-stream",
-      "cache-control":"private, max-age=300"
-    }
-  });
-}
-
-async function cleanupReferences(env, db) {
-  const rows = await db.prepare(`
-    SELECT q.id,q.reference_key,a.date AS appointment_date,q.quoted_at,q.created_at
-    FROM quotes q
-    LEFT JOIN appointments a ON a.quote_id=q.id
-    WHERE q.reference_key IS NOT NULL
-  `).all();
-
-  const now = Date.now();
-  for (const q of rows.results || []) {
-    const base = q.appointment_date
-      ? Date.parse(`${q.appointment_date}T00:00:00-03:00`)
-      : Date.parse(q.quoted_at || q.created_at);
-    if (!Number.isFinite(base)) continue;
-
-    if (now >= base + 14 * 86400000) {
-      await env.R2.delete(q.reference_key);
-      await db.prepare("UPDATE quotes SET reference_key=NULL WHERE id=?").bind(q.id).run();
-    }
-  }
+  if (!q?.reference_key) return json(404,{error:"Esta solicitud no tiene enlace de referencia."});
+  return json(200,{reference_url:q.reference_key});
 }
 
 async function sendDueReminderNotifications(db) {
@@ -558,7 +536,7 @@ async function handleAPI(request, env, ctx) {
   }
 
   if (method === "POST" && path === "quote") {
-    return createQuote(request,env,db);
+    return createQuote(request,db);
   }
 
   if (method === "GET" && path === "settings") {
@@ -570,39 +548,30 @@ async function handleAPI(request, env, ctx) {
       address:s.address,
       maps_url:s.maps_url,
       instagram:s.instagram,
+      safety_info:s.safety_info,
+      contact_info:s.contact_info,
       schedule:s.schedule
     });
   }
 
   if (method === "GET" && path === "portfolio") {
-    const rows = await db.prepare(
-      "SELECT id,description,created_at,updated_at FROM portfolio ORDER BY created_at DESC"
-    ).all();
-    const origin = url.origin;
-    return json(200,{
-      portfolio:(rows.results || []).map(p => ({
-        ...p,
-        image_url: `${origin}/api/portfolio-image?id=${encodeURIComponent(p.id)}`
-      }))
-    });
+    // El portfolio se administra desde GitHub/public.
+    // public/portfolio.json contiene los metadatos y las rutas de las imágenes.
+    if (!env.ASSETS) return json(200,{portfolio:[]});
+    const manifestUrl = new URL("/portfolio/portfolio.json", request.url);
+    const manifest = await env.ASSETS.fetch(new Request(manifestUrl, {method:"GET"}));
+    if (!manifest.ok) return json(200,{portfolio:[]});
+    try {
+      const data = await manifest.json();
+      return json(200,{portfolio:Array.isArray(data) ? data : []});
+    } catch {
+      return json(200,{portfolio:[]});
+    }
   }
 
-  if (method === "GET" && path === "portfolio-image") {
-    const p = await db.prepare("SELECT r2_key FROM portfolio WHERE id=?")
-      .bind(url.searchParams.get("id")).first();
-    if (!p?.r2_key) return new Response("Imagen no encontrada",{status:404});
-    const obj = await env.R2.get(p.r2_key);
-    if (!obj) return new Response("Imagen no encontrada",{status:404});
-    return new Response(obj.body,{
-      headers:{
-        "content-type":obj.httpMetadata?.contentType || "application/octet-stream",
-        "cache-control":"public, max-age=3600"
-      }
-    });
-  }
 
   if (method === "GET" && path === "reference") {
-    return getReference(env,db,request,url.searchParams.get("quote_id"));
+    return getReference(db,request,url.searchParams.get("quote_id"));
   }
 
   if (method === "GET" && path === "admin/finance") {
@@ -857,14 +826,14 @@ Cualquier consulta avísame! Si te parece podemos reservar una fecha y hora
 
   if (method === "POST" && path === "admin/settings") {
     const body = await parseJSON(request);
-    const allowed = ["studio_name","artist_name","description","address","maps_url","instagram"];
+    const allowed = ["studio_name","artist_name","description","address","maps_url","instagram","safety_info","contact_info"];
     const s = await getSettings(db);
     const next = Object.fromEntries(allowed.map(k => [k, body[k] !== undefined ? String(body[k]) : s[k]]));
     await db.prepare(`
       UPDATE settings
-      SET studio_name=?,artist_name=?,description=?,address=?,maps_url=?,instagram=?,updated_at=CURRENT_TIMESTAMP
+      SET studio_name=?,artist_name=?,description=?,address=?,maps_url=?,instagram=?,safety_info=?,contact_info=?,updated_at=CURRENT_TIMESTAMP
       WHERE id=1
-    `).bind(next.studio_name,next.artist_name,next.description,next.address,next.maps_url,next.instagram).run();
+    `).bind(next.studio_name,next.artist_name,next.description,next.address,next.maps_url,next.instagram,next.safety_info,next.contact_info).run();
     return json(200,{ok:true});
   }
 
@@ -919,31 +888,11 @@ Cualquier consulta avísame! Si te parece podemos reservar una fecha y hora
   }
 
   if (method === "POST" && path === "admin/portfolio") {
-    const form = await request.formData();
-    const image = form.get("image");
-    const description = String(form.get("description") || "").trim();
-    if (!image || typeof image === "string") return json(400,{error:"Falta la imagen."});
-    if (image.size > MAX_PORTFOLIO_BYTES) return json(413,{error:"La imagen supera 12 MB."});
-    const type = String(image.type || "").toLowerCase();
-    if (!["image/jpeg","image/png","image/webp"].includes(type)) {
-      return json(400,{error:"Portfolio: JPG, PNG o WEBP."});
-    }
-    const id = uid("pf");
-    const key = `portfolio/${new Date().toISOString().slice(0,10)}/${id}`;
-    await env.R2.put(key,image.stream(),{httpMetadata:{contentType:type}});
-    await db.prepare("INSERT INTO portfolio(id,r2_key,description) VALUES(?,?,?)")
-      .bind(id,key,description).run();
-    return json(201,{ok:true,id});
+    return json(501,{error:"La carga de portfolio desde Gestión está desactivada. Las imágenes se administran como archivos estáticos del proyecto."});
   }
 
   if (method === "DELETE" && path === "admin/portfolio") {
-    const id = url.searchParams.get("id");
-    const p = await db.prepare("SELECT r2_key FROM portfolio WHERE id=?").bind(id).first();
-    if (p) {
-      await env.R2.delete(p.r2_key);
-      await db.prepare("DELETE FROM portfolio WHERE id=?").bind(id).run();
-    }
-    return json(200,{ok:true});
+    return json(501,{error:"El portfolio estático se administra desde los archivos del proyecto."});
   }
 
   if (method === "POST" && path === "admin/stock") {
@@ -1050,9 +999,6 @@ export default {
 
   async scheduled(event, env, ctx) {
     if (!env.DB) return;
-    ctx.waitUntil((async () => {
-      await cleanupReferences(env,env.DB);
-      await sendDueReminderNotifications(env.DB);
-    })());
+    ctx.waitUntil(sendDueReminderNotifications(env.DB));
   }
 };
