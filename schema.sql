@@ -92,6 +92,9 @@ CREATE TABLE IF NOT EXISTS portfolio (
   id TEXT PRIMARY KEY,
   image_path TEXT NOT NULL UNIQUE,
   description TEXT NOT NULL DEFAULT '',
+  image_data TEXT,
+  image_mime TEXT,
+  deleted INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -209,12 +212,12 @@ VALUES
 
 
 -- Solo Tinta Ink — portfolio estático con descripciones editables
--- Las imágenes viven en /public/portfolio/images/ y no se reemplazan desde Gestión.
+-- Las 11 fotos originales viven en photos.js; las fotos nuevas/reemplazos se guardan en image_data.
 
 
 
 -- Solo Tinta Ink — portfolio estático con descripciones editables
--- Las imágenes viven en /public/portfolio/images/ y no se reemplazan desde Gestión.
+-- Las 11 fotos originales viven en photos.js; las fotos nuevas/reemplazos se guardan en image_data.
 -- Esta migración solo guarda las descripciones que Gestión puede editar.
 
 INSERT INTO portfolio (id, image_path, description) VALUES

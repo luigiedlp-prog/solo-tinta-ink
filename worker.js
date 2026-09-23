@@ -6,63 +6,65 @@
 const PORTFOLIO_ITEMS = [
   {
     "id": "tortuga",
-    "image_url": "/portfolio/images/tortuga.webp",
+    "image_url": "/api/photo/tortuga",
     "description": "Tortuga en línea fina."
   },
   {
     "id": "lineas",
-    "image_url": "/portfolio/images/lineas.webp",
+    "image_url": "/api/photo/lineas",
     "description": "Diseño de líneas finas."
   },
   {
     "id": "media-manga",
-    "image_url": "/portfolio/images/media-manga.webp",
+    "image_url": "/api/photo/media-manga",
     "description": "Media manga."
   },
   {
     "id": "enzo-fernandez",
-    "image_url": "/portfolio/images/enzo-fernandez.webp",
+    "image_url": "/api/photo/enzo-fernandez",
     "description": "Retrato de Enzo Fernández."
   },
   {
     "id": "angel",
-    "image_url": "/portfolio/images/angel.webp",
+    "image_url": "/api/photo/angel",
     "description": "Ángel en black & grey."
   },
   {
     "id": "ojo",
-    "image_url": "/portfolio/images/ojo.webp",
+    "image_url": "/api/photo/ojo",
     "description": "Diseño de ojo en realismo."
   },
   {
     "id": "douglas-haig",
-    "image_url": "/portfolio/images/douglas-haig.webp",
+    "image_url": "/api/photo/douglas-haig",
     "description": "Escudo de Douglas Haig."
   },
   {
     "id": "tigre-microrealismo",
-    "image_url": "/portfolio/images/tigre-microrealismo.webp",
+    "image_url": "/api/photo/tigre-microrealismo",
     "description": "Tigre en microrealismo."
   },
   {
     "id": "microrealismo",
-    "image_url": "/portfolio/images/microrealismo.webp",
+    "image_url": "/api/photo/microrealismo",
     "description": "Diseño de microrealismo."
   },
   {
     "id": "aguila",
-    "image_url": "/portfolio/images/aguila.webp",
+    "image_url": "/api/photo/aguila",
     "description": "Águila en realismo."
   },
   {
     "id": "manga-completa",
-    "image_url": "/portfolio/images/manga-completa.webp",
+    "image_url": "/api/photo/manga-completa",
     "description": "Manga completa."
   }
 ];
 
+import PHOTOS from "./photos.js";
+
 const SESSION_DAYS = 30;
-const BUILD = "2026-09-23-FINAL2";
+const BUILD = "2026-09-23-FINAL5";
 
 const MAX_NOTE_LENGTH = 2000;
 
@@ -364,14 +366,33 @@ async function createQuote(request, db) {
   return json(201, {ok:true, quoteId:id});
 }
 
+const PORTFOLIO_IDS = new Set(PORTFOLIO_ITEMS.map(x => x.id));
+const MAX_PORTFOLIO = 30;
+
+// Fotos originales (photos.js) + fotos agregadas o reemplazadas desde Gestión (D1).
 async function getPortfolio(db) {
-  // Lista fija embebida: no depende de que el Worker se consulte a sí mismo.
-  let descriptions = new Map();
+  let rows = [];
   try {
-    const rows = await db.prepare('SELECT id, description FROM portfolio').all();
-    descriptions = new Map((rows.results || []).map(x => [x.id, x.description]));
+    rows = (await db.prepare(`
+      SELECT id, description, COALESCE(deleted,0) AS deleted,
+             CASE WHEN image_data IS NOT NULL THEN 1 ELSE 0 END AS has_data,
+             created_at, updated_at
+      FROM portfolio
+    `).all()).results || [];
   } catch {}
-  return PORTFOLIO_ITEMS.map(x => ({...x, description: descriptions.has(x.id) ? descriptions.get(x.id) : (x.description || '')}));
+  const byId = new Map(rows.map(r => [r.id, r]));
+  const ver = r => "?v=" + String(r?.updated_at || "").replace(/\D/g, "");
+  const custom = rows
+    .filter(r => !PORTFOLIO_IDS.has(r.id) && !r.deleted && r.has_data)
+    .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
+    .map(r => ({id: r.id, image_url: "/api/photo/" + r.id + ver(r), description: r.description || "", custom: true}));
+  const builtin = PORTFOLIO_ITEMS
+    .filter(x => !byId.get(x.id)?.deleted)
+    .map(x => {
+      const r = byId.get(x.id);
+      return {...x, image_url: "/api/photo/" + x.id + (r?.has_data ? ver(r) : ""), description: r ? (r.description || "") : (x.description || "")};
+    });
+  return [...custom, ...builtin];
 }
 
 async function adminData(db, request) {
@@ -629,7 +650,7 @@ const SCHEMA_STATEMENTS = [
  "CREATE TABLE IF NOT EXISTS appointments (\n  id TEXT PRIMARY KEY,\n  client_id TEXT NOT NULL REFERENCES clients(id),\n  quote_id TEXT REFERENCES quotes(id),\n  date TEXT NOT NULL,\n  start_time TEXT NOT NULL,\n  duration_minutes INTEGER NOT NULL,\n  price INTEGER NOT NULL,\n  status TEXT NOT NULL CHECK (\n    status IN ('scheduled','completed','cancelled','another_session')\n  ) DEFAULT 'scheduled',\n  payment_method TEXT CHECK (payment_method IN ('cash','transfer') OR payment_method IS NULL),\n  another_session_note TEXT NOT NULL DEFAULT '',\n  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP\n);",
  "CREATE TABLE IF NOT EXISTS day_blocks (\n  date TEXT PRIMARY KEY,\n  reason TEXT NOT NULL DEFAULT '',\n  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP\n);",
  "CREATE TABLE IF NOT EXISTS followups (\n  id TEXT PRIMARY KEY,\n  client_id TEXT NOT NULL REFERENCES clients(id),\n  note TEXT NOT NULL,\n  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP\n);",
- "CREATE TABLE IF NOT EXISTS portfolio (\n  id TEXT PRIMARY KEY,\n  image_path TEXT NOT NULL UNIQUE,\n  description TEXT NOT NULL DEFAULT '',\n  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP\n);",
+ "CREATE TABLE IF NOT EXISTS portfolio (\n  id TEXT PRIMARY KEY,\n  image_path TEXT NOT NULL UNIQUE,\n  description TEXT NOT NULL DEFAULT '',\n  image_data TEXT,\n  image_mime TEXT,\n  deleted INTEGER NOT NULL DEFAULT 0,\n  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP\n);",
  "CREATE TABLE IF NOT EXISTS stock_items (\n  id TEXT PRIMARY KEY,\n  name TEXT NOT NULL,\n  quantity REAL NOT NULL DEFAULT 0,\n  unit TEXT NOT NULL DEFAULT 'unidad',\n  minimum_quantity REAL NOT NULL DEFAULT 0,\n  last_restocked_at TEXT,\n  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP\n);",
  "CREATE TABLE IF NOT EXISTS stock_movements (\n  id TEXT PRIMARY KEY,\n  stock_item_id TEXT NOT NULL REFERENCES stock_items(id),\n  appointment_id TEXT REFERENCES appointments(id),\n  type TEXT NOT NULL CHECK (type IN ('restock','usage','adjustment')),\n  quantity REAL NOT NULL,\n  note TEXT NOT NULL DEFAULT '',\n  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP\n);",
  "CREATE TABLE IF NOT EXISTS notifications (\n  id TEXT PRIMARY KEY,\n  type TEXT NOT NULL,\n  title TEXT NOT NULL,\n  body TEXT NOT NULL,\n  target_id TEXT,\n  seen INTEGER NOT NULL DEFAULT 0,\n  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP\n);",
@@ -652,12 +673,38 @@ const SCHEMA_STATEMENTS = [
  "INSERT OR IGNORE INTO stock_items(id,name,quantity,unit,minimum_quantity)\nVALUES\n('stock_black_ink','Tinta negra',0,'ml',30),\n('stock_color_ink','Tinta de color',0,'ml',30),\n('stock_caps','Caps',0,'unidad',20),\n('stock_vaseline','Vaselina',0,'g',50),\n('stock_fields','Campos',0,'unidad',10),\n('stock_gloves','Guantes',0,'unidad',20),\n('stock_needles','Agujas',0,'unidad',10);"
 ];
 
+const EXPECTED_COLUMNS = {"settings": [["id", "INTEGER"], ["studio_name", "TEXT"], ["artist_name", "TEXT"], ["description", "TEXT"], ["address", "TEXT"], ["maps_url", "TEXT"], ["instagram", "TEXT"], ["safety_info", "TEXT"], ["contact_info", "TEXT"], ["schedule_json", "TEXT"], ["pin_hash", "TEXT"], ["created_at", "TEXT"], ["updated_at", "TEXT"]], "auth_sessions": [["token_hash", "TEXT"], ["expires_at", "TEXT"], ["created_at", "TEXT"]], "auth_attempts": [["ip", "TEXT"], ["created_at", "TEXT"]], "clients": [["id", "TEXT"], ["name", "TEXT"], ["whatsapp", "TEXT"], ["notes", "TEXT"], ["created_at", "TEXT"], ["updated_at", "TEXT"]], "quotes": [["id", "TEXT"], ["client_id", "TEXT"], ["description", "TEXT"], ["body_area", "TEXT"], ["size", "TEXT"], ["reference_data", "TEXT"], ["status", "TEXT"], ["price", "INTEGER"], ["duration_minutes", "INTEGER"], ["quoted_at", "TEXT"], ["discarded_at", "TEXT"], ["created_at", "TEXT"], ["updated_at", "TEXT"]], "appointments": [["id", "TEXT"], ["client_id", "TEXT"], ["quote_id", "TEXT"], ["date", "TEXT"], ["start_time", "TEXT"], ["duration_minutes", "INTEGER"], ["price", "INTEGER"], ["status", "TEXT"], ["payment_method", "TEXT"], ["another_session_note", "TEXT"], ["created_at", "TEXT"], ["updated_at", "TEXT"]], "day_blocks": [["date", "TEXT"], ["reason", "TEXT"], ["created_at", "TEXT"]], "followups": [["id", "TEXT"], ["client_id", "TEXT"], ["note", "TEXT"], ["created_at", "TEXT"]], "portfolio": [["id", "TEXT"], ["image_path", "TEXT"], ["description", "TEXT"], ["image_data", "TEXT"], ["image_mime", "TEXT"], ["deleted", "INTEGER"], ["created_at", "TEXT"], ["updated_at", "TEXT"]], "stock_items": [["id", "TEXT"], ["name", "TEXT"], ["quantity", "REAL"], ["unit", "TEXT"], ["minimum_quantity", "REAL"], ["last_restocked_at", "TEXT"], ["created_at", "TEXT"], ["updated_at", "TEXT"]], "stock_movements": [["id", "TEXT"], ["stock_item_id", "TEXT"], ["appointment_id", "TEXT"], ["type", "TEXT"], ["quantity", "REAL"], ["note", "TEXT"], ["created_at", "TEXT"]], "notifications": [["id", "TEXT"], ["type", "TEXT"], ["title", "TEXT"], ["body", "TEXT"], ["target_id", "TEXT"], ["seen", "INTEGER"], ["created_at", "TEXT"]], "push_subscriptions": [["id", "TEXT"], ["endpoint", "TEXT"], ["subscription_json", "TEXT"], ["created_at", "TEXT"]], "schedule_locks": [["date", "TEXT"], ["token", "TEXT"], ["created_at", "TEXT"]], "history_events": [["id", "TEXT"], ["client_id", "TEXT"], ["appointment_id", "TEXT"], ["quote_id", "TEXT"], ["event_type", "TEXT"], ["payload_json", "TEXT"], ["created_at", "TEXT"]]};
+const VOLATILE_TABLES = ["auth_sessions","auth_attempts","schedule_locks"];
+
 let schemaOk = false;
+// Deja la base lista aunque venga de una versión anterior: crea tablas que falten,
+// recrea las temporales (sesiones/intentos) si tienen otra estructura y agrega columnas faltantes.
 async function ensureSchema(db) {
   if (schemaOk) return;
-  let ready = false;
-  try { ready = !!(await db.prepare("SELECT id FROM settings WHERE id=1").first()); } catch {}
-  if (!ready) await db.batch(SCHEMA_STATEMENTS.map(s => db.prepare(s)));
+  const tableStmts = SCHEMA_STATEMENTS.filter(s => /^CREATE TABLE/i.test(s));
+  const indexStmts = SCHEMA_STATEMENTS.filter(s => /^CREATE INDEX/i.test(s));
+  const seedStmts = SCHEMA_STATEMENTS.filter(s => !/^CREATE/i.test(s));
+
+  for (const t of VOLATILE_TABLES) {
+    const info = await db.prepare(`PRAGMA table_info(${t})`).all();
+    const have = new Set((info.results || []).map(c => c.name));
+    if (have.size && EXPECTED_COLUMNS[t].some(([n]) => !have.has(n))) {
+      await db.prepare(`DROP TABLE ${t}`).run();
+    }
+  }
+  await db.batch(tableStmts.map(s => db.prepare(s)));
+
+  for (const [t, cols] of Object.entries(EXPECTED_COLUMNS)) {
+    const info = await db.prepare(`PRAGMA table_info(${t})`).all();
+    const have = new Set((info.results || []).map(c => c.name));
+    for (const [name, type] of cols) {
+      if (!have.has(name)) await db.prepare(`ALTER TABLE ${t} ADD COLUMN ${name} ${type || "TEXT"}`).run();
+    }
+  }
+  await db.batch(indexStmts.map(s => db.prepare(s)));
+
+  const seeded = await db.prepare("SELECT id FROM settings WHERE id=1").first();
+  if (!seeded) await db.batch(seedStmts.map(s => db.prepare(s)));
   schemaOk = true;
 }
 
@@ -1064,10 +1111,51 @@ Cualquier consulta avísame! Si te parece podemos coordinar una fecha y hora
     await db.prepare(`
       INSERT INTO portfolio(id,image_path,description) VALUES(?,?,?)
       ON CONFLICT(id) DO UPDATE SET description=excluded.description,updated_at=CURRENT_TIMESTAMP
-    `).bind(id,item.image_url,description).run();
+    `).bind(id,"/api/photo/"+id,description).run();
     return json(200,{ok:true});
   }
 
+
+  if (method === "POST" && path === "admin/portfolio/photo") {
+    const body = await parseJSON(request);
+    const m = /^data:(image\/(?:jpeg|webp|png));base64,([A-Za-z0-9+/=]+)$/i.exec(String(body.image || ""));
+    if (!m) return json(400,{error:"La foto no es válida."});
+    if (m[2].length > 900000) return json(413,{error:"La foto es demasiado pesada. Elegí otra."});
+    let id = String(body.id || "");
+    let description = String(body.description || "").trim().slice(0,500);
+    if (id) {
+      if (!PORTFOLIO_IDS.has(id)) {
+        const own = await db.prepare("SELECT id FROM portfolio WHERE id=?").bind(id).first();
+        if (!own) return json(404,{error:"Trabajo no encontrado."});
+      } else if (!description) {
+        description = PORTFOLIO_ITEMS.find(x => x.id === id)?.description || "";
+      }
+    } else {
+      const items = await getPortfolio(db);
+      if (items.length >= MAX_PORTFOLIO) return json(409,{error:`Llegaste al máximo de ${MAX_PORTFOLIO} fotos. Borrá alguna para agregar otra.`});
+      id = uid("ph");
+    }
+    await db.prepare(`
+      INSERT INTO portfolio(id,image_path,description,image_data,image_mime,deleted)
+      VALUES(?,?,?,?,?,0)
+      ON CONFLICT(id) DO UPDATE SET image_data=excluded.image_data,image_mime=excluded.image_mime,deleted=0,updated_at=CURRENT_TIMESTAMP
+    `).bind(id,"/api/photo/"+id,description,m[2],m[1].toLowerCase()).run();
+    return json(200,{ok:true,id});
+  }
+
+  if (method === "POST" && path === "admin/portfolio/delete") {
+    const id = String((await parseJSON(request)).id || "");
+    if (!id) return json(400,{error:"Falta la foto."});
+    if (PORTFOLIO_IDS.has(id)) {
+      await db.prepare(`
+        INSERT INTO portfolio(id,image_path,description,deleted) VALUES(?,?,'',1)
+        ON CONFLICT(id) DO UPDATE SET deleted=1,image_data=NULL,image_mime=NULL,updated_at=CURRENT_TIMESTAMP
+      `).bind(id,"/api/photo/"+id).run();
+    } else {
+      await db.prepare("DELETE FROM portfolio WHERE id=?").bind(id).run();
+    }
+    return json(200,{ok:true});
+  }
 
   if (method === "POST" && path === "admin/stock") {
     const body = await parseJSON(request);
@@ -1132,6 +1220,7 @@ Cualquier consulta avísame! Si te parece podemos coordinar una fecha y hora
     const id = String(body.id || "");
     const qty = Number(body.quantity);
     if (!id || !Number.isFinite(qty) || qty <= 0) return json(400,{error:"Cantidad inválida."});
+    if (!(await db.prepare("SELECT id FROM stock_items WHERE id=?").bind(id).first())) return json(404,{error:"Insumo no encontrado."});
     await db.prepare(`
       UPDATE stock_items
       SET quantity=quantity+?,last_restocked_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP
@@ -1187,8 +1276,20 @@ export default {
       if (url.pathname === "/api" || url.pathname === "/api/") {
         return new Response("Solo Tinta Ink API",{headers:{"content-type":"text/plain; charset=utf-8"}});
       }
+      if (request.method === "GET" && url.pathname.startsWith("/api/photo/")) {
+        const id = decodeURIComponent(url.pathname.slice("/api/photo/".length));
+        let row = null;
+        try { await ensureSchema(env.DB); row = await env.DB.prepare("SELECT image_data, image_mime, COALESCE(deleted,0) AS deleted FROM portfolio WHERE id=?").bind(id).first(); } catch {}
+        if (row?.deleted) return new Response("No encontrada", {status:404});
+        const b64 = row?.image_data || PHOTOS[id];
+        if (!b64) return new Response("No encontrada", {status:404});
+        const bin = atob(b64);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        return new Response(bytes, {headers:{"content-type":row?.image_data ? (row.image_mime || "image/jpeg") : "image/webp","cache-control":"public, max-age=86400"}});
+      }
       if (url.pathname.startsWith("/api/")) {
-        return handleAPI(request,env,ctx);
+        return await handleAPI(request,env,ctx);
       }
       if (env.ASSETS) {
         const assetPath = url.pathname === "/" || url.pathname === "/reservar" || url.pathname === "/reservar/"

@@ -1,31 +1,19 @@
-# Solo Tinta Ink — versión final
+# Solo Tinta Ink — versión final (build 2026-09-23-FINAL5)
 
 ## Arquitectura
-- Cloudflare Worker
-- Cloudflare D1
-- Static Assets del propio Worker
-- Sin almacenamiento de objetos externo
-
-Las fotos del portfolio están incluidas en `public/portfolio/images/`.
-Las referencias que adjunta un cliente se comprimen en el navegador y se guardan temporalmente en D1; Gestión puede abrirlas desde `/api/reference`.
+- Cloudflare Worker + Cloudflare D1 + Static Assets del propio Worker
+- Sin R2 ni almacenamiento de objetos: la referencia del cliente es un **link** (opcional)
+- Fotos del portfolio: las 11 originales están en `photos.js`; desde Gestión > Portfolio se pueden agregar, cambiar y borrar fotos (se guardan en D1). Todo se sirve por `/api/photo/<id>`
 
 ## Puesta en marcha
-1. Crear una D1 llamada `solo-tinta-ink`.
-2. Reemplazar `database_id` en `wrangler.toml` por el ID de esa D1.
-3. Ejecutar `schema.sql` sobre la D1 nueva.
-4. El schema trae un PIN temporal `5837` para poder entrar por primera vez. Cambialo desde Gestión antes de entregar el acceso a Feli.
-5. Ejecutar `wrangler deploy`.
+1. Crear una D1 llamada `solo-tinta-ink` y poner su ID en `database_id` de `wrangler.toml`.
+2. Subir a GitHub / `wrangler deploy`.
+3. Abrir `https://TU-DOMINIO/api/health`: debe decir `"db":"ok"`. Las tablas se crean solas la primera vez (no hace falta correr schema.sql a mano).
+4. Entrar a `/gestion` con el PIN temporal `5837` y cambiarlo en Ajustes > Cambiar PIN.
+
+## Diagnóstico
+- `/api/health` muestra la versión (`build`) y el estado de la base (`db` y `detail`).
+- Si `/gestion` falla al entrar, ahora el mensaje incluye el detalle del error.
 
 ## Rutas
-- `/reservar` — web pública.
-- `/gestion` — gestión protegida por PIN.
-- `/api/*` — API.
-
-## Flujo público
-El cliente pide presupuesto y adjunta una imagen de referencia. No elige fecha ni hora. Feli responde por WhatsApp y carga manualmente el turno en Gestión.
-
-## Portfolio
-Las imágenes son fijas. Gestión solo edita sus descripciones.
-
-## Importante
-El ZIP no contiene credenciales personales ni una contraseña final de Feli. El PIN debe establecerse antes de producción.
+`/reservar` pública · `/gestion` con PIN · `/api/*` API
