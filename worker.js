@@ -64,7 +64,7 @@ const PORTFOLIO_ITEMS = [
 import PHOTOS from "./photos.js";
 
 const SESSION_DAYS = 30;
-const BUILD = "2026-09-23-FINAL5";
+const BUILD = "2026-09-23-FINAL6";
 
 const MAX_NOTE_LENGTH = 2000;
 
@@ -676,6 +676,23 @@ const SCHEMA_STATEMENTS = [
 const EXPECTED_COLUMNS = {"settings": [["id", "INTEGER"], ["studio_name", "TEXT"], ["artist_name", "TEXT"], ["description", "TEXT"], ["address", "TEXT"], ["maps_url", "TEXT"], ["instagram", "TEXT"], ["safety_info", "TEXT"], ["contact_info", "TEXT"], ["schedule_json", "TEXT"], ["pin_hash", "TEXT"], ["created_at", "TEXT"], ["updated_at", "TEXT"]], "auth_sessions": [["token_hash", "TEXT"], ["expires_at", "TEXT"], ["created_at", "TEXT"]], "auth_attempts": [["ip", "TEXT"], ["created_at", "TEXT"]], "clients": [["id", "TEXT"], ["name", "TEXT"], ["whatsapp", "TEXT"], ["notes", "TEXT"], ["created_at", "TEXT"], ["updated_at", "TEXT"]], "quotes": [["id", "TEXT"], ["client_id", "TEXT"], ["description", "TEXT"], ["body_area", "TEXT"], ["size", "TEXT"], ["reference_data", "TEXT"], ["status", "TEXT"], ["price", "INTEGER"], ["duration_minutes", "INTEGER"], ["quoted_at", "TEXT"], ["discarded_at", "TEXT"], ["created_at", "TEXT"], ["updated_at", "TEXT"]], "appointments": [["id", "TEXT"], ["client_id", "TEXT"], ["quote_id", "TEXT"], ["date", "TEXT"], ["start_time", "TEXT"], ["duration_minutes", "INTEGER"], ["price", "INTEGER"], ["status", "TEXT"], ["payment_method", "TEXT"], ["another_session_note", "TEXT"], ["created_at", "TEXT"], ["updated_at", "TEXT"]], "day_blocks": [["date", "TEXT"], ["reason", "TEXT"], ["created_at", "TEXT"]], "followups": [["id", "TEXT"], ["client_id", "TEXT"], ["note", "TEXT"], ["created_at", "TEXT"]], "portfolio": [["id", "TEXT"], ["image_path", "TEXT"], ["description", "TEXT"], ["image_data", "TEXT"], ["image_mime", "TEXT"], ["deleted", "INTEGER"], ["created_at", "TEXT"], ["updated_at", "TEXT"]], "stock_items": [["id", "TEXT"], ["name", "TEXT"], ["quantity", "REAL"], ["unit", "TEXT"], ["minimum_quantity", "REAL"], ["last_restocked_at", "TEXT"], ["created_at", "TEXT"], ["updated_at", "TEXT"]], "stock_movements": [["id", "TEXT"], ["stock_item_id", "TEXT"], ["appointment_id", "TEXT"], ["type", "TEXT"], ["quantity", "REAL"], ["note", "TEXT"], ["created_at", "TEXT"]], "notifications": [["id", "TEXT"], ["type", "TEXT"], ["title", "TEXT"], ["body", "TEXT"], ["target_id", "TEXT"], ["seen", "INTEGER"], ["created_at", "TEXT"]], "push_subscriptions": [["id", "TEXT"], ["endpoint", "TEXT"], ["subscription_json", "TEXT"], ["created_at", "TEXT"]], "schedule_locks": [["date", "TEXT"], ["token", "TEXT"], ["created_at", "TEXT"]], "history_events": [["id", "TEXT"], ["client_id", "TEXT"], ["appointment_id", "TEXT"], ["quote_id", "TEXT"], ["event_type", "TEXT"], ["payload_json", "TEXT"], ["created_at", "TEXT"]]};
 const VOLATILE_TABLES = ["auth_sessions","auth_attempts","schedule_locks"];
 
+async function rebuildPortfolio(db) {
+  const info = (await db.prepare("PRAGMA table_info(portfolio)").all()).results || [];
+  const have = new Set(info.map(c => c.name));
+  const names = EXPECTED_COLUMNS.portfolio.map(([n]) => n);
+  const fallback = {image_path:"'/api/photo/'||id", description:"''", deleted:"0", created_at:"CURRENT_TIMESTAMP", updated_at:"CURRENT_TIMESTAMP"};
+  const select = names.map(n => have.has(n) ? n : (fallback[n] || "NULL")).join(",");
+  const create = SCHEMA_STATEMENTS.find(s => /^CREATE TABLE IF NOT EXISTS portfolio\b/i.test(s))
+    .replace(/^CREATE TABLE IF NOT EXISTS portfolio\b/i, "CREATE TABLE portfolio_new");
+  await db.batch([
+    db.prepare("DROP TABLE IF EXISTS portfolio_new"),
+    db.prepare(create),
+    db.prepare(`INSERT OR IGNORE INTO portfolio_new(${names.join(",")}) SELECT ${select} FROM portfolio`),
+    db.prepare("DROP TABLE portfolio"),
+    db.prepare("ALTER TABLE portfolio_new RENAME TO portfolio")
+  ]);
+}
+
 let schemaOk = false;
 // Deja la base lista aunque venga de una versión anterior: crea tablas que falten,
 // recrea las temporales (sesiones/intentos) si tienen otra estructura y agrega columnas faltantes.
@@ -696,9 +713,18 @@ async function ensureSchema(db) {
 
   for (const [t, cols] of Object.entries(EXPECTED_COLUMNS)) {
     const info = await db.prepare(`PRAGMA table_info(${t})`).all();
-    const have = new Set((info.results || []).map(c => c.name));
+    const rows = info.results || [];
+    const have = new Set(rows.map(c => c.name));
     for (const [name, type] of cols) {
       if (!have.has(name)) await db.prepare(`ALTER TABLE ${t} ADD COLUMN ${name} ${type || "TEXT"}`).run();
+    }
+    // Columnas viejas obligatorias y sin valor por defecto (ej. r2_key) rompen los INSERT nuevos: se eliminan.
+    const expectedNames = new Set(cols.map(c => c[0]));
+    for (const c of rows) {
+      if (!expectedNames.has(c.name) && c.notnull && c.dflt_value == null && !c.pk) {
+        try { await db.prepare(`ALTER TABLE ${t} DROP COLUMN "${c.name}"`).run(); }
+        catch (e) { if (t === "portfolio") { await rebuildPortfolio(db); break; } throw e; }
+      }
     }
   }
   await db.batch(indexStmts.map(s => db.prepare(s)));
