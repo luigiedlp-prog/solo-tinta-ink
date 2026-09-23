@@ -295,7 +295,7 @@ body{margin:0;color:var(--label);font-family:var(--sans);min-height:100vh;-webki
 <div class="overlay" id="genOverlay" onclick="if(event.target===this)closeSheet()"><div class="sheet" id="genSheet"></div></div>
 
 <script>
-const API='/api';const BUILD='2026-09-23-FINAL2';let pin='',D=null,tab='Presupuestos';const nowLocal=new Date();let month=`${nowLocal.getFullYear()}-${String(nowLocal.getMonth()+1).padStart(2,'0')}`,calDate=new Date();
+const API='/api';const BUILD='2026-09-23-FINAL5';let pin='',D=null,tab='Presupuestos';const nowLocal=new Date();let month=`${nowLocal.getFullYear()}-${String(nowLocal.getMonth()+1).padStart(2,'0')}`,calDate=new Date();
 const $=s=>document.querySelector(s);const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=v=>'$'+Number(v||0).toLocaleString('es-AR');
 const dur=v=>{v=Number(v||0);return `${Math.floor(v/60)} h${v%60?' '+String(v%60).padStart(2,'0')+' min':''}`};
@@ -353,7 +353,36 @@ function addClientFollowup(id){sheet('Nuevo seguimiento',[{id:'note',label:'Qué
 
 function portfolioView(el){
  const list=D.portfolio||[];
- el.innerHTML=`<div class="sectionCaption" style="margin-top:14px">Trabajos publicados</div><div class="group">${list.map(x=>`<div class="portfolioAdminCard"><img class="portfolioAdminThumb" src="${esc(x.image_url)}" alt="" loading="lazy"><div class="portfolioAdminBody"><div class="portfolioAdminName">${esc(x.description||'Trabajo sin descripción')}</div><div class="portfolioAdminDesc">${esc(x.description||'Agregá una descripción breve para mostrar debajo de la foto.')}</div><button class="portfolioAdminEdit" onclick="editPortfolio('${esc(x.id)}')">Editar descripción</button></div></div>`).join('')||'<div class="empty" style="padding:18px 16px;color:var(--label3)">No hay trabajos cargados.</div>'}</div><div class="footnote" style="margin-bottom:20px">Las fotos forman parte del proyecto y no se reemplazan desde Gestión. Acá solo podés editar el texto asociado a cada trabajo.</div>`;
+ const btn='flex:1;min-width:0;padding:9px 6px;font-size:12.5px';
+ el.innerHTML=`<div style="padding:14px 16px 0"><button class="btn btnFilled" onclick="pickPhoto()">+ Agregar foto</button></div><div class="sectionCaption" style="margin-top:14px">Trabajos publicados · ${list.length}</div><div class="group">${list.map(x=>`<div class="portfolioAdminCard"><img class="portfolioAdminThumb" src="${esc(x.image_url)}" alt="" loading="lazy"><div class="portfolioAdminBody"><div class="portfolioAdminDesc">${esc(x.description||'Sin descripción. Tocá "Descripción" para agregar una.')}</div><div style="display:flex;gap:6px;margin-top:8px"><button class="portfolioAdminEdit" style="${btn}" onclick="editPortfolio('${esc(x.id)}')">Descripción</button><button class="portfolioAdminEdit" style="${btn}" onclick="pickPhoto('${esc(x.id)}')">Cambiar foto</button><button class="portfolioAdminEdit" style="${btn}" onclick="delPhoto('${esc(x.id)}')">Borrar</button></div></div></div>`).join('')||'<div class="empty" style="padding:18px 16px;color:var(--label3)">No hay trabajos cargados.</div>'}</div><div class="footnote" style="margin-bottom:20px">Podés agregar, cambiar o borrar fotos (máximo 30). Se achican solas antes de guardarse. Las nuevas aparecen primero en la web pública.</div>`;
+}
+async function compressPhoto(file){
+ const img=await new Promise((res,rej)=>{const u=URL.createObjectURL(file),im=new Image();im.onload=()=>{URL.revokeObjectURL(u);res(im)};im.onerror=()=>{URL.revokeObjectURL(u);rej(new Error('No se pudo leer la foto. Probá con una JPG o PNG.'))};im.src=u});
+ let side=1600;
+ for(let k=0;k<4;k++){
+  const sc=Math.min(1,side/Math.max(img.naturalWidth,img.naturalHeight));
+  const c=document.createElement('canvas');c.width=Math.max(1,Math.round(img.naturalWidth*sc));c.height=Math.max(1,Math.round(img.naturalHeight*sc));
+  const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(img,0,0,c.width,c.height);
+  for(let q=.85;q>=.5;q-=.1){const d=c.toDataURL('image/jpeg',q);if(d.length<=880000)return d}
+  side=Math.round(side*.75);
+ }
+ throw new Error('La foto sigue siendo demasiado pesada. Elegí otra.');
+}
+function pickPhoto(id){
+ const inp=document.createElement('input');inp.type='file';inp.accept='image/*';
+ inp.onchange=async()=>{
+  const f=inp.files[0];if(!f)return;
+  try{
+   const image=await compressPhoto(f);
+   if(id){await post('/admin/portfolio/photo',{id,image});await load();return}
+   sheet('Nueva foto',[{id:'description',label:'Descripción (opcional)',area:1,placeholder:'Ej: Rosa fine line en antebrazo',hint:'Se muestra cuando se abre la foto en la web pública.'}],'Publicar',async v=>{await post('/admin/portfolio/photo',{image,description:v.description})},{intro:'La foto ya está lista para publicarse.'});
+  }catch(e){alert(e.message)}
+ };
+ inp.click();
+}
+async function delPhoto(id){
+ if(!confirm('¿Borrar esta foto del portfolio?'))return;
+ try{await post('/admin/portfolio/delete',{id});await load()}catch(e){alert(e.message)}
 }
 function editPortfolio(id){const x=(D.portfolio||[]).find(p=>p.id===id);if(!x)return;sheet('Editar descripción',[{id:'description',label:'Descripción',area:1,value:x.description||'',placeholder:'Ej: Microrealismo de tigre en antebrazo',hint:'Se muestra cuando se abre la foto en la web pública.'}],'Guardar',async v=>{if(v.description.length>500)throw new Error('La descripción no puede superar 500 caracteres.');await post('/admin/portfolio',{id,description:v.description})})}
 
