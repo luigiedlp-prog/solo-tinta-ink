@@ -295,7 +295,7 @@ body{margin:0;color:var(--label);font-family:var(--sans);min-height:100vh;-webki
 <div class="overlay" id="genOverlay" onclick="if(event.target===this)closeSheet()"><div class="sheet" id="genSheet"></div></div>
 
 <script>
-const API='/api';const BUILD='2026-09-23-FINAL5';let pin='',D=null,tab='Presupuestos';const nowLocal=new Date();let month=`${nowLocal.getFullYear()}-${String(nowLocal.getMonth()+1).padStart(2,'0')}`,calDate=new Date();
+const API='/api';const BUILD='2026-09-23-FINAL6';let pin='',D=null,tab='Presupuestos';const nowLocal=new Date();let month=`${nowLocal.getFullYear()}-${String(nowLocal.getMonth()+1).padStart(2,'0')}`,calDate=new Date();
 const $=s=>document.querySelector(s);const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=v=>'$'+Number(v||0).toLocaleString('es-AR');
 const dur=v=>{v=Number(v||0);return `${Math.floor(v/60)} h${v%60?' '+String(v%60).padStart(2,'0')+' min':''}`};

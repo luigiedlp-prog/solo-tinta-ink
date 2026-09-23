@@ -130,6 +130,8 @@ body{
 .portfolioViewer{width:min(600px,100%);max-height:92vh;display:flex;flex-direction:column;gap:10px;}
 .portfolioImageWrap{position:relative;border:1px solid var(--sep-bright);border-radius:20px;overflow:hidden;background:#080808;box-shadow:0 30px 90px rgba(0,0,0,.8);}
 .portfolioImage{display:block;width:100%;max-height:72vh;object-fit:contain;background:#050505;}
+.portfolioCaption{color:#f5f5f7;font-size:15px;line-height:1.4;text-align:center;padding:2px 8px;text-shadow:0 1px 8px rgba(0,0,0,.8);}
+.portfolioCaption[hidden]{display:none;}
 .portfolioClose{position:absolute;top:10px;right:10px;width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.2);background:rgba(0,0,0,.55);color:#fff;font-size:22px;line-height:1;}
 .portfolioNav{position:absolute;inset:0;display:flex;align-items:center;justify-content:space-between;padding:0 8px;pointer-events:none;}
 .portfolioNav button{pointer-events:auto;width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.2);background:rgba(0,0,0,.5);color:#fff;font-size:25px;}
@@ -249,6 +251,7 @@ body{
         <button type="button" aria-label="Siguiente" onclick="portfolioMove(1)">›</button>
       </div>
     </div>
+    <div class="portfolioCaption" id="portfolioCaption" hidden></div>
   </div>
 </div>
 
@@ -290,7 +293,7 @@ document.getElementById('segmented').addEventListener('click',e=>{const seg=e.ta
 function flashInvalid(el){const row=el.closest('.rowStack');row.classList.add('invalid');setTimeout(()=>row.classList.remove('invalid'),700)}
 window.portfolioItems=[];
 let portfolioIndex=0;
-function paintPortfolio(){const x=window.portfolioItems[portfolioIndex];if(!x)return;const img=document.getElementById('portfolioImage');img.src=x.image_url;img.alt=x.description||'Trabajo de Solo Tinta Ink';}
+function paintPortfolio(){const x=window.portfolioItems[portfolioIndex];if(!x)return;const img=document.getElementById('portfolioImage');img.src=x.image_url;img.alt=x.description||'Trabajo de Solo Tinta Ink';const cap=document.getElementById('portfolioCaption');cap.textContent=x.description||'';cap.hidden=!x.description;}
 function openPortfolio(i){if(!window.portfolioItems[i])return;portfolioIndex=i;paintPortfolio();const o=document.getElementById('portfolioOverlay');o.classList.add('show');o.setAttribute('aria-hidden','false');document.body.style.overflow='hidden'}
 function portfolioMove(delta){if(!window.portfolioItems.length)return;portfolioIndex=(portfolioIndex+delta+window.portfolioItems.length)%window.portfolioItems.length;paintPortfolio()}
 function closePortfolio(){const o=document.getElementById('portfolioOverlay');o.classList.remove('show');o.setAttribute('aria-hidden','true');document.getElementById('portfolioImage').src='';document.body.style.overflow=''}
