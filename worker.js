@@ -251,15 +251,6 @@ async function createNotification(db, type, title, body, targetId = null) {
   `).bind(id,type,title,body,targetId).run();
 }
 
-function validHttpUrl(value) {
-  try {
-    const u = new URL(String(value || "").trim());
-    return u.protocol === "http:" || u.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-
 async function createQuote(request, db) {
   const contentType = request.headers.get("content-type") || "";
   let data = {};
@@ -278,28 +269,28 @@ async function createQuote(request, db) {
   const description = String(data.description || "").trim();
   const bodyArea = String(data.body_area || "").trim();
   const size = String(data.size || "").trim();
-  const referenceUrl = String(data.reference_url || data.reference_link || "").trim();
+  const referenceData = String(data.reference_data || "").trim();
 
   if (!name || name.length > 120 || !validWA(whatsapp) || !description || description.length > 3000) {
     return json(400, {error:"Completá nombre, WhatsApp y descripción correctamente."});
   }
 
-  if (referenceUrl && !validHttpUrl(referenceUrl)) {
-    return json(400, {error:"El enlace de referencia debe comenzar con http:// o https://."});
+  if (!referenceData || !/^data:image\/(?:webp|jpeg|png);base64,[A-Za-z0-9+/=]+$/i.test(referenceData)) {
+    return json(400, {error:"Adjuntá una imagen de referencia."});
+  }
+
+  const base64 = referenceData.split(',')[1] || '';
+  if (base64.length > 980000) {
+    return json(413, {error:"La referencia es demasiado pesada. Elegí otra imagen."});
   }
 
   const client = await upsertClient(db, name, whatsapp);
-
-  // Sin R2: reutilizamos reference_key para guardar únicamente la URL pública.
-  // Así no hace falta migrar la tabla quotes existente.
-  const referenceKey = referenceUrl || null;
-
   const id = uid("q");
   await db.prepare(`
     INSERT INTO quotes(
-      id,client_id,description,body_area,size,reference_key,status
+      id,client_id,description,body_area,size,reference_data,status
     ) VALUES(?,?,?,?,?,?, 'pending_quote')
-  `).bind(id,client.id,description,bodyArea,size,referenceKey).run();
+  `).bind(id,client.id,description,bodyArea,size,referenceData).run();
 
   await createNotification(
     db,
@@ -312,12 +303,30 @@ async function createQuote(request, db) {
   return json(201, {ok:true, quoteId:id});
 }
 
-async function adminData(db) {
-  const [settings, quotes, appointments, clients, stock, notifications, followups, dayBlocks] =
+async function getPortfolio(db, request) {
+  const fallback = [];
+  try {
+    const manifestUrl = new URL('/portfolio/portfolio.json', request.url);
+    const manifest = await fetch(manifestUrl);
+    if (manifest.ok) {
+      const data = await manifest.json();
+      if (Array.isArray(data)) fallback.push(...data);
+    }
+  } catch {}
+  const rows = await db.prepare('SELECT id, image_path, description FROM portfolio').all();
+  const descriptions = new Map((rows.results || []).map(x => [x.id, x.description]));
+  return fallback.map(x => ({...x, description: descriptions.has(x.id) ? descriptions.get(x.id) : (x.description || '')}));
+}
+
+async function adminData(db, request) {
+  const [settings, quotes, appointments, clients, stock, notifications, followups, dayBlocks, portfolio] =
     await Promise.all([
       getSettings(db),
       db.prepare(`
-        SELECT q.*, c.name, c.whatsapp
+        SELECT q.id,q.client_id,q.description,q.body_area,q.size,
+               CASE WHEN q.reference_data IS NOT NULL THEN 1 ELSE 0 END AS has_reference,
+               q.status,q.price,q.duration_minutes,q.quoted_at,q.discarded_at,q.created_at,q.updated_at,
+               c.name,c.whatsapp
         FROM quotes q JOIN clients c ON c.id=q.client_id
         ORDER BY q.created_at DESC
       `).all(),
@@ -334,7 +343,8 @@ async function adminData(db) {
         FROM followups f JOIN clients c ON c.id=f.client_id
         ORDER BY f.created_at DESC LIMIT 200
       `).all(),
-      db.prepare("SELECT * FROM day_blocks ORDER BY date").all()
+      db.prepare("SELECT * FROM day_blocks ORDER BY date").all(),
+      getPortfolio(db, request)
     ]);
 
   return {
@@ -356,6 +366,7 @@ async function adminData(db) {
     notifications:notifications.results || [],
     followups:followups.results || [],
     day_blocks:dayBlocks.results || [],
+    portfolio,
     today:todayAR()
   };
 }
@@ -486,9 +497,37 @@ async function cancelAppointment(db, body) {
 
 async function getReference(db, request, id) {
   if (!(await isAdmin(request, db))) return json(401,{error:"No autorizado"});
-  const q = await db.prepare("SELECT reference_key FROM quotes WHERE id=?").bind(id).first();
-  if (!q?.reference_key) return json(404,{error:"Esta solicitud no tiene enlace de referencia."});
-  return json(200,{reference_url:q.reference_key});
+  const q = await db.prepare("SELECT reference_data FROM quotes WHERE id=?").bind(id).first();
+  if (!q?.reference_data) return new Response("Imagen no encontrada",{status:404});
+  const m = /^data:(image\/(?:webp|jpeg|png));base64,([A-Za-z0-9+/=]+)$/i.exec(q.reference_data);
+  if (!m) return new Response("Imagen no encontrada",{status:404});
+  const binary = atob(m[2]);
+  const bytes = new Uint8Array(binary.length);
+  for (let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
+  return new Response(bytes,{headers:{
+    "content-type":m[1].toLowerCase(),
+    "cache-control":"private, no-store",
+    "content-disposition":"inline"
+  }});
+}
+
+async function cleanupReferenceData(db) {
+  const rows = await db.prepare(`
+    SELECT q.id,q.reference_data,a.date AS appointment_date,q.quoted_at,q.created_at
+    FROM quotes q
+    LEFT JOIN appointments a ON a.quote_id=q.id
+    WHERE q.reference_data IS NOT NULL
+  `).all();
+  const now=Date.now();
+  for (const q of rows.results || []) {
+    const base=q.appointment_date
+      ? Date.parse(`${q.appointment_date}T00:00:00-03:00`)
+      : Date.parse(q.quoted_at || q.created_at);
+    if (Number.isFinite(base) && now >= base + 14*86400000) {
+      await db.prepare("UPDATE quotes SET reference_data=NULL,updated_at=CURRENT_TIMESTAMP WHERE id=?")
+        .bind(q.id).run();
+    }
+  }
 }
 
 async function sendDueReminderNotifications(db) {
@@ -528,7 +567,7 @@ async function handleAPI(request, env, ctx) {
   const method = request.method;
 
   if (method === "GET" && path === "health") {
-    return json(200,{ok:true,service:"solo-tinta-ink",build:"2026-09-21-3",date:todayAR()});
+    return json(200,{ok:true,service:"solo-tinta-ink",build:"2026-09-23-FINAL",date:todayAR()});
   }
 
   if (method === "POST" && path === "login") {
@@ -555,20 +594,8 @@ async function handleAPI(request, env, ctx) {
   }
 
   if (method === "GET" && path === "portfolio") {
-    // El portfolio se administra desde GitHub/public.
-    // public/portfolio.json contiene los metadatos y las rutas de las imágenes.
-    if (!env.ASSETS) return json(200,{portfolio:[]});
-    const manifestUrl = new URL("/portfolio/portfolio.json", request.url);
-    const manifest = await env.ASSETS.fetch(new Request(manifestUrl, {method:"GET"}));
-    if (!manifest.ok) return json(200,{portfolio:[]});
-    try {
-      const data = await manifest.json();
-      return json(200,{portfolio:Array.isArray(data) ? data : []});
-    } catch {
-      return json(200,{portfolio:[]});
-    }
+    return json(200,{portfolio:await getPortfolio(db, request)});
   }
-
 
   if (method === "GET" && path === "reference") {
     return getReference(db,request,url.searchParams.get("quote_id"));
@@ -585,7 +612,11 @@ async function handleAPI(request, env, ctx) {
         COALESCE(SUM(CASE WHEN status='completed' THEN price ELSE 0 END),0) AS total_income,
         SUM(CASE WHEN status='completed' THEN 1 ELSE 0 END) AS tattoos_completed,
         COALESCE(AVG(CASE WHEN status='completed' THEN price END),0) AS average_ticket,
-        SUM(CASE WHEN status='cancelled' THEN 1 ELSE 0 END) AS cancelled
+        SUM(CASE WHEN status='cancelled' THEN 1 ELSE 0 END) AS cancelled,
+        SUM(CASE WHEN status='scheduled' THEN 1 ELSE 0 END) AS scheduled,
+        COALESCE(SUM(CASE WHEN status='scheduled' THEN price ELSE 0 END),0) AS scheduled_income,
+        COALESCE(SUM(CASE WHEN status='completed' AND payment_method='cash' THEN price ELSE 0 END),0) AS cash_income,
+        COALESCE(SUM(CASE WHEN status='completed' AND payment_method='transfer' THEN price ELSE 0 END),0) AS transfer_income
       FROM appointments
       WHERE substr(date,1,7)=?
     `).bind(month).first();
@@ -605,7 +636,11 @@ async function handleAPI(request, env, ctx) {
       total_income:Number(summary?.total_income || 0),
       tattoos_completed:Number(summary?.tattoos_completed || 0),
       average_ticket:Number(summary?.average_ticket || 0),
-      cancelled:Number(summary?.cancelled || 0)
+      cancelled:Number(summary?.cancelled || 0),
+      scheduled:Number(summary?.scheduled || 0),
+      scheduled_income:Number(summary?.scheduled_income || 0),
+      cash_income:Number(summary?.cash_income || 0),
+      transfer_income:Number(summary?.transfer_income || 0)
     },daily:daily.results || []});
   }
 
@@ -634,6 +669,23 @@ async function handleAPI(request, env, ctx) {
       history:(history.results || []).map(h => ({...h,payload:JSON.parse(h.payload_json || "{}")}))});
   }
 
+  if (method === "POST" && path === "admin/client/notes") {
+    const body = await parseJSON(request);
+    const id = String(body.id || "");
+    const notes = String(body.notes || "").trim();
+    if (!id) return json(400,{error:"Cliente inválido."});
+    if (notes.length > 1000) return json(400,{error:"La nota no puede superar 1000 caracteres."});
+    const client = await db.prepare("SELECT id FROM clients WHERE id=?").bind(id).first();
+    if (!client) return json(404,{error:"Cliente no encontrado."});
+    await db.prepare("UPDATE clients SET notes=?,updated_at=CURRENT_TIMESTAMP WHERE id=?")
+      .bind(notes,id).run();
+    await db.prepare(`
+      INSERT INTO history_events(id,client_id,event_type,payload_json)
+      VALUES(?,?,?,?)
+    `).bind(uid("hist"),id,"client_note_updated",JSON.stringify({notes})).run();
+    return json(200,{ok:true});
+  }
+
   if (method === "GET" && path === "admin/stock/movements") {
     if (!(await isAdmin(request,db))) return json(401,{error:"No autorizado"});
     const itemId = url.searchParams.get("item_id");
@@ -659,7 +711,7 @@ async function handleAPI(request, env, ctx) {
   }
 
   if (method === "GET" && path === "admin/data") {
-    return json(200,await adminData(db));
+    return json(200,await adminData(db, request));
   }
 
   if (method === "POST" && path === "admin/quote/discard") {
@@ -679,7 +731,10 @@ async function handleAPI(request, env, ctx) {
       return json(400,{error:"Precio o duración inválidos."});
     }
     const q = await db.prepare(`
-      SELECT q.*,c.name,c.whatsapp FROM quotes q JOIN clients c ON c.id=q.client_id WHERE q.id=?
+      SELECT q.id,q.client_id,q.description,q.body_area,q.size,
+             CASE WHEN q.reference_data IS NOT NULL THEN 1 ELSE 0 END AS has_reference,
+             q.status,q.price,q.duration_minutes,q.quoted_at,q.discarded_at,q.created_at,q.updated_at,
+             c.name,c.whatsapp FROM quotes q JOIN clients c ON c.id=q.client_id WHERE q.id=?
     `).bind(body.id).first();
     if (!q) return json(404,{error:"Presupuesto no encontrado."});
 
@@ -697,14 +752,17 @@ async function handleAPI(request, env, ctx) {
 `¡Hola ${q.name}! Soy Feli de Solo Tinta Ink
 Te paso el presupuesto para tu tatuaje: $${price}
 Duración estimada: ${Math.floor(duration/60)}:${String(duration%60).padStart(2,"0")} horas
-Cualquier consulta avísame! Si te parece podemos reservar una fecha y hora
+Cualquier consulta avísame! Si te parece podemos coordinar una fecha y hora
 ¡Muchas gracias!`
     });
   }
 
   if (method === "GET" && path === "admin/quote") {
     const q = await db.prepare(`
-      SELECT q.*,c.name,c.whatsapp FROM quotes q JOIN clients c ON c.id=q.client_id WHERE q.id=?
+      SELECT q.id,q.client_id,q.description,q.body_area,q.size,
+             CASE WHEN q.reference_data IS NOT NULL THEN 1 ELSE 0 END AS has_reference,
+             q.status,q.price,q.duration_minutes,q.quoted_at,q.discarded_at,q.created_at,q.updated_at,
+             c.name,c.whatsapp FROM quotes q JOIN clients c ON c.id=q.client_id WHERE q.id=?
     `).bind(url.searchParams.get("id")).first();
     return q ? json(200,q) : json(404,{error:"No encontrado"});
   }
@@ -888,12 +946,20 @@ Cualquier consulta avísame! Si te parece podemos reservar una fecha y hora
   }
 
   if (method === "POST" && path === "admin/portfolio") {
-    return json(501,{error:"La carga de portfolio desde Gestión está desactivada. Las imágenes se administran como archivos estáticos del proyecto."});
+    const body = await parseJSON(request);
+    const id = String(body.id || '').trim();
+    const description = String(body.description || '').trim();
+    const items = await getPortfolio(db, request);
+    const item = items.find(x => x.id === id);
+    if (!item) return json(404,{error:"Trabajo de portfolio no encontrado."});
+    if (description.length > 500) return json(400,{error:"La descripción es demasiado larga."});
+    await db.prepare(`
+      INSERT INTO portfolio(id,image_path,description) VALUES(?,?,?)
+      ON CONFLICT(id) DO UPDATE SET description=excluded.description,updated_at=CURRENT_TIMESTAMP
+    `).bind(id,item.image_url,description).run();
+    return json(200,{ok:true});
   }
 
-  if (method === "DELETE" && path === "admin/portfolio") {
-    return json(501,{error:"El portfolio estático se administra desde los archivos del proyecto."});
-  }
 
   if (method === "POST" && path === "admin/stock") {
     const body = await parseJSON(request);
@@ -1040,6 +1106,9 @@ export default {
 
   async scheduled(event, env, ctx) {
     if (!env.DB) return;
-    ctx.waitUntil(sendDueReminderNotifications(env.DB));
+    ctx.waitUntil(Promise.all([
+      cleanupReferenceData(env.DB),
+      sendDueReminderNotifications(env.DB)
+    ]));
   }
 };

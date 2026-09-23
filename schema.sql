@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS quotes (
   description TEXT NOT NULL,
   body_area TEXT NOT NULL DEFAULT '',
   size TEXT NOT NULL DEFAULT '',
-  reference_key TEXT,
+  reference_data TEXT,
   status TEXT NOT NULL CHECK (
     status IN ('pending_quote','awaiting_confirmation','scheduled','discarded','cancelled')
   ),
@@ -90,7 +90,7 @@ CREATE TABLE IF NOT EXISTS followups (
 
 CREATE TABLE IF NOT EXISTS portfolio (
   id TEXT PRIMARY KEY,
-  r2_key TEXT NOT NULL UNIQUE,
+  image_path TEXT NOT NULL UNIQUE,
   description TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -198,14 +198,38 @@ VALUES
   'Solo Tinta Ink',
   'Felipe Herrera',
   'Estudio de tatuajes especializado en fine line, black & grey y realismo. Feli atiende con cita previa, un cliente a la vez, para dar tranquilidad y atención personalizada en cada sesión.',
-  'Av. Colón 1140, Pergamino, Buenos Aires',
-  'https://maps.google.com/?q=Av.+Colón+1140,+Pergamino,+Buenos+Aires',
+  '',
+  '',
   '@solo.tinta.ink',
-  'Todo el material de un solo uso (agujas, guantes, campos, vaselina) se abre nuevo delante del cliente y se descarta después de cada sesión. El instrumental reutilizable se esteriliza en autoclave certificado, y se trabaja con tintas homologadas para uso dérmico. Feli mantiene actualizado su curso de bioseguridad para tatuadores.',
-  'WhatsApp del estudio: +54 9 2477 40-1234 · También por Instagram (@solo.tinta.ink)',
+  '',
+  '',
   '{"0":[],"1":[["09:30","21:30"]],"2":[["09:30","21:30"]],"3":[["09:30","21:30"]],"4":[["09:30","21:30"]],"5":[["09:30","21:30"]],"6":[["09:30","21:30"]]}',
-  'a20c25627ed7bbb6d2b999c589b698e6ecd84384e2e0e510d8869d79a5ad244c'
+  'f4707bd71b28e638dc2c6981e3750e0cccf4dae5b06a17457808508ab273318e'
 );
+
+
+-- Solo Tinta Ink — portfolio estático con descripciones editables
+-- Las imágenes viven en /public/portfolio/images/ y no se reemplazan desde Gestión.
+
+
+
+-- Solo Tinta Ink — portfolio estático con descripciones editables
+-- Las imágenes viven en /public/portfolio/images/ y no se reemplazan desde Gestión.
+-- Esta migración solo guarda las descripciones que Gestión puede editar.
+
+INSERT INTO portfolio (id, image_path, description) VALUES
+('tortuga','/portfolio/images/tortuga.webp','Tortuga en línea fina.'),
+('lineas','/portfolio/images/lineas.webp','Diseño de líneas finas.'),
+('media-manga','/portfolio/images/media-manga.webp','Media manga.'),
+('enzo-fernandez','/portfolio/images/enzo-fernandez.webp','Retrato de Enzo Fernández.'),
+('angel','/portfolio/images/angel.webp','Ángel en black & grey.'),
+('ojo','/portfolio/images/ojo.webp','Diseño de ojo en realismo.'),
+('douglas-haig','/portfolio/images/douglas-haig.webp','Escudo de Douglas Haig.'),
+('tigre-microrealismo','/portfolio/images/tigre-microrealismo.webp','Tigre en microrealismo.'),
+('microrealismo','/portfolio/images/microrealismo.webp','Diseño de microrealismo.'),
+('aguila','/portfolio/images/aguila.webp','Águila en realismo.'),
+('manga-completa','/portfolio/images/manga-completa.webp','Manga completa.')
+ON CONFLICT(id) DO NOTHING;
 
 
 -- Insumos iniciales sugeridos. Se pueden editar desde Gestión.
