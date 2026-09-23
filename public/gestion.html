@@ -194,9 +194,10 @@ body{margin:0;color:var(--label);font-family:var(--sans);min-height:100vh;-webki
   border-top:1px solid var(--sep-bright);
 }
 .tabbar::-webkit-scrollbar{display:none}
-.tab{flex:0 0 76px;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--label3);background:none;border:none;font-family:var(--sans);position:relative;}
+.tab{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--label3);background:none;border:none;font-family:var(--sans);position:relative;}
 .tab svg{width:23px;height:23px;}
-.tab span{font-size:10px;font-weight:600;}
+.tab span{font-size:9.5px;letter-spacing:-.2px;font-weight:600;}
+@media(max-width:380px){.tab span{font-size:8.5px;letter-spacing:-.3px}}
 .tab.active{color:var(--tint-bright);}
 .tabBadge{position:absolute;top:-3px;right:22%;background:var(--tint-bright);color:#fff;font-size:9px;font-weight:700;border-radius:99px;min-width:15px;height:15px;display:flex;align-items:center;justify-content:center;padding:0 3px;box-shadow:0 0 8px rgba(255,45,77,.6);}
 
@@ -294,11 +295,11 @@ body{margin:0;color:var(--label);font-family:var(--sans);min-height:100vh;-webki
 <div class="overlay" id="genOverlay" onclick="if(event.target===this)closeSheet()"><div class="sheet" id="genSheet"></div></div>
 
 <script>
-const API='/api';const BUILD='2026-09-23-FINAL';let pin='',D=null,tab='Presupuestos';const nowLocal=new Date();let month=`${nowLocal.getFullYear()}-${String(nowLocal.getMonth()+1).padStart(2,'0')}`,calDate=new Date();
+const API='/api';const BUILD='2026-09-23-FINAL2';let pin='',D=null,tab='Presupuestos';const nowLocal=new Date();let month=`${nowLocal.getFullYear()}-${String(nowLocal.getMonth()+1).padStart(2,'0')}`,calDate=new Date();
 const $=s=>document.querySelector(s);const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=v=>'$'+Number(v||0).toLocaleString('es-AR');
 const dur=v=>{v=Number(v||0);return `${Math.floor(v/60)} h${v%60?' '+String(v%60).padStart(2,'0')+' min':''}`};
-async function api(path,opts={}){let r;try{r=await fetch(API+path,{credentials:'same-origin',...opts})}catch(e){throw new Error('No se pudo conectar con el servidor. Abrí /api/health en tu dominio para ver si el Worker responde.')}let d={};try{d=await r.json()}catch{}if(!r.ok)throw new Error(d.error||'Error de servidor');return d}
+async function api(path,opts={}){let r;try{r=await fetch(API+path,{credentials:'same-origin',...opts})}catch(e){throw new Error('No se pudo conectar con el servidor. Abrí /api/health en tu dominio para ver si el Worker responde.')}let d={};try{d=await r.json()}catch{}if(!r.ok)throw new Error(d.error?(d.detail?d.error+': '+d.detail:d.error):'Error de servidor (HTTP '+r.status+')');return d}
 function renderDots(){[0,1,2,3].forEach(i=>document.querySelectorAll('.dot')[i]?.classList.toggle('filled',i<pin.length))}
 function press(n){if(pin.length>=4)return;pin+=n;renderDots();if(pin.length===4)setTimeout(login,80)}function del(){pin=pin.slice(0,-1);renderDots()}
 async function login(){const err=document.getElementById('loginErr');err.textContent='';try{await api('/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({pin})});pin='';await load();document.getElementById('loginScreen').style.display='none'}catch(e){pin='';renderDots();err.textContent=e.message;const d=document.getElementById('dots');d.classList.remove('shake');void d.offsetWidth;d.classList.add('shake')}}

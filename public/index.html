@@ -229,9 +229,9 @@ body{
   <div class="sectionCaption">Si tenés una referencia</div>
   <div class="group">
     <div class="rowStack">
-      <div class="rowLabel">Imagen de referencia</div>
-      <input type="file" id="fRef" accept="image/jpeg,image/png,image/webp" capture="environment">
-      <div class="fieldHint">Adjuntá una imagen. La comprimimos antes de enviarla; no se publica.</div>
+      <div class="rowLabel">Link de referencia (opcional)</div>
+      <input type="url" placeholder="Pegá un link (Instagram, Pinterest, Drive...)" id="fRef" autocomplete="off" inputmode="url" autocapitalize="none">
+      <div class="fieldHint">Subí tu foto de referencia donde quieras (Instagram, Drive, Pinterest, etc.) y pegá el link acá. No se publica.</div>
     </div>
   </div>
   <p class="footnote">Enviar esto no reserva una fecha. Feli revisa tu idea, te pasa precio y duración por WhatsApp y, si seguimos adelante, ahí coordinan el día y la hora.</p>
@@ -326,26 +326,13 @@ document.getElementById('infoBtn').addEventListener('click',()=>document.getElem
 function closeSuccess(){document.getElementById('successOverlay').classList.remove('show');size='Chico';document.querySelectorAll('.seg').forEach(s=>s.classList.toggle('active',s.dataset.v==='Chico'));document.getElementById('fNombre').focus()}
 document.querySelector('#successOverlay .btnPlain')?.addEventListener('click',closeSuccess);
 $('#sendBtn').addEventListener('click',async()=>{
- const nombre=$('#fNombre'),wa=$('#fWa'),idea=$('#fIdea'),ref=$('#fRef');let ok=true;[nombre,wa,idea,ref].forEach(el=>{if(!el.value.trim()){flashInvalid(el);ok=false}});if(!ok)return;
- const phone=wa.value.trim();if(phone.replace(/\D/g,'').length<8){flashInvalid(wa);alert('Revisá el número de WhatsApp.');return}
- const file=ref.files[0];if(!file||!/^image\/(jpeg|png|webp)$/i.test(file.type)){flashInvalid(ref);alert('Adjuntá una imagen JPG, PNG o WebP.');return}
- let reference_data;try{reference_data=await compressReference(file)}catch(e){alert(e.message);return}
- const fd=new FormData();fd.append('name',nombre.value.trim());fd.append('whatsapp',phone);fd.append('description',idea.value.trim());fd.append('body_area',$('#fZona').value.trim());fd.append('size',size);fd.append('reference_data',reference_data);
+ const nombre=$('#fNombre'),wa=$('#fWa'),idea=$('#fIdea'),ref=$('#fRef');let ok=true;[nombre,wa,idea].forEach(el=>{if(!el.value.trim()){flashInvalid(el);ok=false}});if(!ok)return;
+ const phone=wa.value.trim();if(phone.replace(/\D/g,'').length<10){flashInvalid(wa);alert('Revisá el número de WhatsApp.');return}
+ const fd=new FormData();fd.append('name',nombre.value.trim());fd.append('whatsapp',phone);fd.append('description',idea.value.trim());fd.append('body_area',$('#fZona').value.trim());fd.append('size',size);fd.append('reference_link',ref.value.trim());
  const btn=$('#sendBtn');btn.disabled=true;btn.textContent='Enviando…';
- try{await api('/quote',{method:'POST',body:fd});$('#tZona').textContent=$('#fZona').value||'—';$('#tTamano').textContent=size;$('#tFile').textContent='Referencia adjunta';$('#successOverlay').classList.add('show');document.querySelectorAll('#fNombre,#fWa,#fZona,#fIdea').forEach(x=>x.value='');ref.value='';}
+ try{await api('/quote',{method:'POST',body:fd});$('#tZona').textContent=$('#fZona').value||'—';$('#tTamano').textContent=size;$('#tFile').textContent=ref.value.trim()?'Link adjunto':'Sin adjuntar';$('#successOverlay').classList.add('show');document.querySelectorAll('#fNombre,#fWa,#fZona,#fIdea').forEach(x=>x.value='');ref.value='';}
  catch(e){alert(e.message)}finally{btn.disabled=false;btn.textContent='Pedir presupuesto'}
 });
-async function compressReference(file){
- const maxSide=1800,maxDataLength=960000;
- const img=await new Promise((resolve,reject)=>{const u=URL.createObjectURL(file);const im=new Image();im.onload=()=>{URL.revokeObjectURL(u);resolve(im)};im.onerror=()=>{URL.revokeObjectURL(u);reject(new Error('No se pudo leer la imagen.'))};im.src=u});
- const scale=Math.min(1,maxSide/Math.max(img.naturalWidth,img.naturalHeight));
- const c=document.createElement('canvas');c.width=Math.max(1,Math.round(img.naturalWidth*scale));c.height=Math.max(1,Math.round(img.naturalHeight*scale));
- const ctx=c.getContext('2d');ctx.drawImage(img,0,0,c.width,c.height);
- let q=.78,data='';do{data=c.toDataURL('image/webp',q);q-=.08}while(data.length>maxDataLength&&q>=.42);
- if(data.length>maxDataLength)throw new Error('La imagen sigue siendo demasiado pesada. Elegí una foto más liviana.');
- return data;
-}
-
 loadPublic();
 </script>
 </body>
