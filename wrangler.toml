@@ -8,7 +8,7 @@ crons = ["*/5 * * * *"]
 [[d1_databases]]
 binding = "DB"
 database_name = "solo-tinta-ink"
-database_id = "REEMPLAZAR_CON_DATABASE_ID"
+database_id = "7784e4a4-eedc-4e01-86c3-d356a0f8c185"
 
 [assets]
 directory = "./public"
