@@ -1,1 +1,57 @@
-[]
+[
+  {
+    "id": "tortuga",
+    "image_url": "/portfolio/images/tortuga.webp",
+    "description": "Tortuga en línea fina."
+  },
+  {
+    "id": "lineas",
+    "image_url": "/portfolio/images/lineas.webp",
+    "description": "Diseño de líneas finas."
+  },
+  {
+    "id": "media-manga",
+    "image_url": "/portfolio/images/media-manga.webp",
+    "description": "Media manga."
+  },
+  {
+    "id": "enzo-fernandez",
+    "image_url": "/portfolio/images/enzo-fernandez.webp",
+    "description": "Retrato de Enzo Fernández."
+  },
+  {
+    "id": "angel",
+    "image_url": "/portfolio/images/angel.webp",
+    "description": "Ángel en black & grey."
+  },
+  {
+    "id": "ojo",
+    "image_url": "/portfolio/images/ojo.webp",
+    "description": "Diseño de ojo en realismo."
+  },
+  {
+    "id": "douglas-haig",
+    "image_url": "/portfolio/images/douglas-haig.webp",
+    "description": "Escudo de Douglas Haig."
+  },
+  {
+    "id": "tigre-microrealismo",
+    "image_url": "/portfolio/images/tigre-microrealismo.webp",
+    "description": "Tigre en microrealismo."
+  },
+  {
+    "id": "microrealismo",
+    "image_url": "/portfolio/images/microrealismo.webp",
+    "description": "Diseño de microrealismo."
+  },
+  {
+    "id": "aguila",
+    "image_url": "/portfolio/images/aguila.webp",
+    "description": "Águila en realismo."
+  },
+  {
+    "id": "manga-completa",
+    "image_url": "/portfolio/images/manga-completa.webp",
+    "description": "Manga completa."
+  }
+]
