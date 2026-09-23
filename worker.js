@@ -3,7 +3,67 @@
 // No incluye promociones, catálogo público de precios ni lógica de seña.
 // IMPORTANTE: reemplazar el PIN inicial en producción mediante /api/admin/settings/pin.
 
+const PORTFOLIO_ITEMS = [
+  {
+    "id": "tortuga",
+    "image_url": "/portfolio/images/tortuga.webp",
+    "description": "Tortuga en línea fina."
+  },
+  {
+    "id": "lineas",
+    "image_url": "/portfolio/images/lineas.webp",
+    "description": "Diseño de líneas finas."
+  },
+  {
+    "id": "media-manga",
+    "image_url": "/portfolio/images/media-manga.webp",
+    "description": "Media manga."
+  },
+  {
+    "id": "enzo-fernandez",
+    "image_url": "/portfolio/images/enzo-fernandez.webp",
+    "description": "Retrato de Enzo Fernández."
+  },
+  {
+    "id": "angel",
+    "image_url": "/portfolio/images/angel.webp",
+    "description": "Ángel en black & grey."
+  },
+  {
+    "id": "ojo",
+    "image_url": "/portfolio/images/ojo.webp",
+    "description": "Diseño de ojo en realismo."
+  },
+  {
+    "id": "douglas-haig",
+    "image_url": "/portfolio/images/douglas-haig.webp",
+    "description": "Escudo de Douglas Haig."
+  },
+  {
+    "id": "tigre-microrealismo",
+    "image_url": "/portfolio/images/tigre-microrealismo.webp",
+    "description": "Tigre en microrealismo."
+  },
+  {
+    "id": "microrealismo",
+    "image_url": "/portfolio/images/microrealismo.webp",
+    "description": "Diseño de microrealismo."
+  },
+  {
+    "id": "aguila",
+    "image_url": "/portfolio/images/aguila.webp",
+    "description": "Águila en realismo."
+  },
+  {
+    "id": "manga-completa",
+    "image_url": "/portfolio/images/manga-completa.webp",
+    "description": "Manga completa."
+  }
+];
+
 const SESSION_DAYS = 30;
+const BUILD = "2026-09-23-FINAL2";
+
 const MAX_NOTE_LENGTH = 2000;
 
 const DEFAULT_SCHEDULE = {
@@ -269,19 +329,20 @@ async function createQuote(request, db) {
   const description = String(data.description || "").trim();
   const bodyArea = String(data.body_area || "").trim();
   const size = String(data.size || "").trim();
-  const referenceData = String(data.reference_data || "").trim();
+  const referenceLink = String(data.reference_link || "").trim();
 
   if (!name || name.length > 120 || !validWA(whatsapp) || !description || description.length > 3000) {
     return json(400, {error:"Completá nombre, WhatsApp y descripción correctamente."});
   }
 
-  if (!referenceData || !/^data:image\/(?:webp|jpeg|png);base64,[A-Za-z0-9+/=]+$/i.test(referenceData)) {
-    return json(400, {error:"Adjuntá una imagen de referencia."});
-  }
-
-  const base64 = referenceData.split(',')[1] || '';
-  if (base64.length > 980000) {
-    return json(413, {error:"La referencia es demasiado pesada. Elegí otra imagen."});
+  let referenceValue = null;
+  if (referenceLink) {
+    let u = null;
+    try { u = new URL(/^https?:\/\//i.test(referenceLink) ? referenceLink : "https://" + referenceLink); } catch {}
+    if (!u || referenceLink.length > 500 || !["http:","https:"].includes(u.protocol) || !u.hostname.includes(".")) {
+      return json(400,{error:"El link de referencia no es válido."});
+    }
+    referenceValue = u.toString();
   }
 
   const client = await upsertClient(db, name, whatsapp);
@@ -290,7 +351,7 @@ async function createQuote(request, db) {
     INSERT INTO quotes(
       id,client_id,description,body_area,size,reference_data,status
     ) VALUES(?,?,?,?,?,?, 'pending_quote')
-  `).bind(id,client.id,description,bodyArea,size,referenceData).run();
+  `).bind(id,client.id,description,bodyArea,size,referenceValue).run();
 
   await createNotification(
     db,
@@ -303,19 +364,14 @@ async function createQuote(request, db) {
   return json(201, {ok:true, quoteId:id});
 }
 
-async function getPortfolio(db, request) {
-  const fallback = [];
+async function getPortfolio(db) {
+  // Lista fija embebida: no depende de que el Worker se consulte a sí mismo.
+  let descriptions = new Map();
   try {
-    const manifestUrl = new URL('/portfolio/portfolio.json', request.url);
-    const manifest = await fetch(manifestUrl);
-    if (manifest.ok) {
-      const data = await manifest.json();
-      if (Array.isArray(data)) fallback.push(...data);
-    }
+    const rows = await db.prepare('SELECT id, description FROM portfolio').all();
+    descriptions = new Map((rows.results || []).map(x => [x.id, x.description]));
   } catch {}
-  const rows = await db.prepare('SELECT id, image_path, description FROM portfolio').all();
-  const descriptions = new Map((rows.results || []).map(x => [x.id, x.description]));
-  return fallback.map(x => ({...x, description: descriptions.has(x.id) ? descriptions.get(x.id) : (x.description || '')}));
+  return PORTFOLIO_ITEMS.map(x => ({...x, description: descriptions.has(x.id) ? descriptions.get(x.id) : (x.description || '')}));
 }
 
 async function adminData(db, request) {
@@ -344,7 +400,7 @@ async function adminData(db, request) {
         ORDER BY f.created_at DESC LIMIT 200
       `).all(),
       db.prepare("SELECT * FROM day_blocks ORDER BY date").all(),
-      getPortfolio(db, request)
+      getPortfolio(db)
     ]);
 
   return {
@@ -499,6 +555,7 @@ async function getReference(db, request, id) {
   if (!(await isAdmin(request, db))) return json(401,{error:"No autorizado"});
   const q = await db.prepare("SELECT reference_data FROM quotes WHERE id=?").bind(id).first();
   if (!q?.reference_data) return new Response("Imagen no encontrada",{status:404});
+  if (/^https?:\/\//i.test(q.reference_data)) return Response.redirect(q.reference_data, 302);
   const m = /^data:(image\/(?:webp|jpeg|png));base64,([A-Za-z0-9+/=]+)$/i.exec(q.reference_data);
   if (!m) return new Response("Imagen no encontrada",{status:404});
   const binary = atob(m[2]);
@@ -512,22 +569,25 @@ async function getReference(db, request, id) {
 }
 
 async function cleanupReferenceData(db) {
+  // Solo limpia imágenes viejas guardadas como data: (los links son livianos y se conservan).
   const rows = await db.prepare(`
-    SELECT q.id,q.reference_data,a.date AS appointment_date,q.quoted_at,q.created_at
+    SELECT q.id,a.date AS appointment_date,q.quoted_at,q.created_at
     FROM quotes q
     LEFT JOIN appointments a ON a.quote_id=q.id
-    WHERE q.reference_data IS NOT NULL
+    WHERE q.reference_data LIKE 'data:%'
   `).all();
   const now=Date.now();
   for (const q of rows.results || []) {
     const base=q.appointment_date
       ? Date.parse(`${q.appointment_date}T00:00:00-03:00`)
-      : Date.parse(q.quoted_at || q.created_at);
+      : Date.parse(String(q.quoted_at || q.created_at).replace(" ","T")+"Z");
     if (Number.isFinite(base) && now >= base + 14*86400000) {
       await db.prepare("UPDATE quotes SET reference_data=NULL,updated_at=CURRENT_TIMESTAMP WHERE id=?")
         .bind(q.id).run();
     }
   }
+  await db.prepare("DELETE FROM auth_sessions WHERE expires_at < CURRENT_TIMESTAMP").run();
+  await db.prepare("DELETE FROM auth_attempts WHERE created_at < datetime('now','-1 day')").run();
 }
 
 async function sendDueReminderNotifications(db) {
@@ -538,7 +598,7 @@ async function sendDueReminderNotifications(db) {
     FROM appointments a
     JOIN clients c ON c.id=a.client_id
     WHERE a.status='scheduled'
-      AND datetime(a.date || ' ' || a.start_time) BETWEEN datetime('now','-2 minutes')
+      AND datetime(a.date || ' ' || a.start_time, '+3 hours') BETWEEN datetime('now','-2 minutes')
       AND datetime('now','+62 minutes')
   `).all();
 
@@ -560,6 +620,47 @@ async function sendDueReminderNotifications(db) {
   }
 }
 
+const SCHEMA_STATEMENTS = [
+ "CREATE TABLE IF NOT EXISTS settings (\n  id INTEGER PRIMARY KEY CHECK (id = 1),\n  studio_name TEXT NOT NULL DEFAULT 'Solo Tinta Ink',\n  artist_name TEXT NOT NULL DEFAULT 'Felipe Herrera',\n  description TEXT NOT NULL DEFAULT '',\n  address TEXT NOT NULL DEFAULT '',\n  maps_url TEXT NOT NULL DEFAULT '',\n  instagram TEXT NOT NULL DEFAULT '@solo.tinta.ink',\n  safety_info TEXT NOT NULL DEFAULT '',\n  contact_info TEXT NOT NULL DEFAULT '',\n  schedule_json TEXT NOT NULL,\n  pin_hash TEXT NOT NULL,\n  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP\n);",
+ "CREATE TABLE IF NOT EXISTS auth_sessions (\n  token_hash TEXT PRIMARY KEY,\n  expires_at TEXT NOT NULL,\n  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP\n);",
+ "CREATE TABLE IF NOT EXISTS auth_attempts (\n  ip TEXT NOT NULL,\n  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP\n);",
+ "CREATE TABLE IF NOT EXISTS clients (\n  id TEXT PRIMARY KEY,\n  name TEXT NOT NULL,\n  whatsapp TEXT NOT NULL UNIQUE,\n  notes TEXT NOT NULL DEFAULT '',\n  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP\n);",
+ "CREATE TABLE IF NOT EXISTS quotes (\n  id TEXT PRIMARY KEY,\n  client_id TEXT NOT NULL REFERENCES clients(id),\n  description TEXT NOT NULL,\n  body_area TEXT NOT NULL DEFAULT '',\n  size TEXT NOT NULL DEFAULT '',\n  reference_data TEXT,\n  status TEXT NOT NULL CHECK (\n    status IN ('pending_quote','awaiting_confirmation','scheduled','discarded','cancelled')\n  ),\n  price INTEGER,\n  duration_minutes INTEGER,\n  quoted_at TEXT,\n  discarded_at TEXT,\n  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP\n);",
+ "CREATE TABLE IF NOT EXISTS appointments (\n  id TEXT PRIMARY KEY,\n  client_id TEXT NOT NULL REFERENCES clients(id),\n  quote_id TEXT REFERENCES quotes(id),\n  date TEXT NOT NULL,\n  start_time TEXT NOT NULL,\n  duration_minutes INTEGER NOT NULL,\n  price INTEGER NOT NULL,\n  status TEXT NOT NULL CHECK (\n    status IN ('scheduled','completed','cancelled','another_session')\n  ) DEFAULT 'scheduled',\n  payment_method TEXT CHECK (payment_method IN ('cash','transfer') OR payment_method IS NULL),\n  another_session_note TEXT NOT NULL DEFAULT '',\n  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP\n);",
+ "CREATE TABLE IF NOT EXISTS day_blocks (\n  date TEXT PRIMARY KEY,\n  reason TEXT NOT NULL DEFAULT '',\n  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP\n);",
+ "CREATE TABLE IF NOT EXISTS followups (\n  id TEXT PRIMARY KEY,\n  client_id TEXT NOT NULL REFERENCES clients(id),\n  note TEXT NOT NULL,\n  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP\n);",
+ "CREATE TABLE IF NOT EXISTS portfolio (\n  id TEXT PRIMARY KEY,\n  image_path TEXT NOT NULL UNIQUE,\n  description TEXT NOT NULL DEFAULT '',\n  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP\n);",
+ "CREATE TABLE IF NOT EXISTS stock_items (\n  id TEXT PRIMARY KEY,\n  name TEXT NOT NULL,\n  quantity REAL NOT NULL DEFAULT 0,\n  unit TEXT NOT NULL DEFAULT 'unidad',\n  minimum_quantity REAL NOT NULL DEFAULT 0,\n  last_restocked_at TEXT,\n  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP\n);",
+ "CREATE TABLE IF NOT EXISTS stock_movements (\n  id TEXT PRIMARY KEY,\n  stock_item_id TEXT NOT NULL REFERENCES stock_items(id),\n  appointment_id TEXT REFERENCES appointments(id),\n  type TEXT NOT NULL CHECK (type IN ('restock','usage','adjustment')),\n  quantity REAL NOT NULL,\n  note TEXT NOT NULL DEFAULT '',\n  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP\n);",
+ "CREATE TABLE IF NOT EXISTS notifications (\n  id TEXT PRIMARY KEY,\n  type TEXT NOT NULL,\n  title TEXT NOT NULL,\n  body TEXT NOT NULL,\n  target_id TEXT,\n  seen INTEGER NOT NULL DEFAULT 0,\n  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP\n);",
+ "CREATE TABLE IF NOT EXISTS push_subscriptions (\n  id TEXT PRIMARY KEY,\n  endpoint TEXT NOT NULL UNIQUE,\n  subscription_json TEXT NOT NULL,\n  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP\n);",
+ "CREATE TABLE IF NOT EXISTS schedule_locks (\n  date TEXT PRIMARY KEY,\n  token TEXT NOT NULL,\n  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP\n);",
+ "CREATE TABLE IF NOT EXISTS history_events (\n  id TEXT PRIMARY KEY,\n  client_id TEXT NOT NULL REFERENCES clients(id),\n  appointment_id TEXT REFERENCES appointments(id),\n  quote_id TEXT REFERENCES quotes(id),\n  event_type TEXT NOT NULL,\n  payload_json TEXT NOT NULL DEFAULT '{}',\n  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP\n);",
+ "CREATE INDEX IF NOT EXISTS idx_quotes_status_created\n  ON quotes(status, created_at);",
+ "CREATE INDEX IF NOT EXISTS idx_quotes_client\n  ON quotes(client_id, created_at);",
+ "CREATE INDEX IF NOT EXISTS idx_appointments_date_time\n  ON appointments(date, start_time);",
+ "CREATE INDEX IF NOT EXISTS idx_appointments_client\n  ON appointments(client_id, date);",
+ "CREATE INDEX IF NOT EXISTS idx_followups_client\n  ON followups(client_id, created_at);",
+ "CREATE INDEX IF NOT EXISTS idx_stock_movements_item\n  ON stock_movements(stock_item_id, created_at);",
+ "CREATE INDEX IF NOT EXISTS idx_notifications_seen_created\n  ON notifications(seen, created_at);",
+ "CREATE INDEX IF NOT EXISTS idx_history_client_created\n  ON history_events(client_id, created_at);",
+ "CREATE INDEX IF NOT EXISTS idx_history_appointment\n  ON history_events(appointment_id, created_at);",
+ "CREATE INDEX IF NOT EXISTS idx_history_quote\n  ON history_events(quote_id, created_at);",
+ "CREATE INDEX IF NOT EXISTS idx_schedule_locks_created\n  ON schedule_locks(created_at);",
+ "INSERT OR IGNORE INTO settings\n(id, studio_name, artist_name, description, address, maps_url, instagram, safety_info, contact_info, schedule_json, pin_hash)\nVALUES\n(\n  1,\n  'Solo Tinta Ink',\n  'Felipe Herrera',\n  'Estudio de tatuajes especializado en fine line, black & grey y realismo. Feli atiende con cita previa, un cliente a la vez, para dar tranquilidad y atención personalizada en cada sesión.',\n  '',\n  '',\n  '@solo.tinta.ink',\n  '',\n  '',\n  '{\"0\":[],\"1\":[[\"09:30\",\"21:30\"]],\"2\":[[\"09:30\",\"21:30\"]],\"3\":[[\"09:30\",\"21:30\"]],\"4\":[[\"09:30\",\"21:30\"]],\"5\":[[\"09:30\",\"21:30\"]],\"6\":[[\"09:30\",\"21:30\"]]}',\n  'f4707bd71b28e638dc2c6981e3750e0cccf4dae5b06a17457808508ab273318e'\n);",
+ "INSERT INTO portfolio (id, image_path, description) VALUES\n('tortuga','/portfolio/images/tortuga.webp','Tortuga en línea fina.'),\n('lineas','/portfolio/images/lineas.webp','Diseño de líneas finas.'),\n('media-manga','/portfolio/images/media-manga.webp','Media manga.'),\n('enzo-fernandez','/portfolio/images/enzo-fernandez.webp','Retrato de Enzo Fernández.'),\n('angel','/portfolio/images/angel.webp','Ángel en black & grey.'),\n('ojo','/portfolio/images/ojo.webp','Diseño de ojo en realismo.'),\n('douglas-haig','/portfolio/images/douglas-haig.webp','Escudo de Douglas Haig.'),\n('tigre-microrealismo','/portfolio/images/tigre-microrealismo.webp','Tigre en microrealismo.'),\n('microrealismo','/portfolio/images/microrealismo.webp','Diseño de microrealismo.'),\n('aguila','/portfolio/images/aguila.webp','Águila en realismo.'),\n('manga-completa','/portfolio/images/manga-completa.webp','Manga completa.')\nON CONFLICT(id) DO NOTHING;",
+ "INSERT OR IGNORE INTO stock_items(id,name,quantity,unit,minimum_quantity)\nVALUES\n('stock_black_ink','Tinta negra',0,'ml',30),\n('stock_color_ink','Tinta de color',0,'ml',30),\n('stock_caps','Caps',0,'unidad',20),\n('stock_vaseline','Vaselina',0,'g',50),\n('stock_fields','Campos',0,'unidad',10),\n('stock_gloves','Guantes',0,'unidad',20),\n('stock_needles','Agujas',0,'unidad',10);"
+];
+
+let schemaOk = false;
+async function ensureSchema(db) {
+  if (schemaOk) return;
+  let ready = false;
+  try { ready = !!(await db.prepare("SELECT id FROM settings WHERE id=1").first()); } catch {}
+  if (!ready) await db.batch(SCHEMA_STATEMENTS.map(s => db.prepare(s)));
+  schemaOk = true;
+}
+
 async function handleAPI(request, env, ctx) {
   const db = env.DB;
   const url = new URL(request.url);
@@ -567,8 +668,12 @@ async function handleAPI(request, env, ctx) {
   const method = request.method;
 
   if (method === "GET" && path === "health") {
-    return json(200,{ok:true,service:"solo-tinta-ink",build:"2026-09-23-FINAL",date:todayAR()});
+    let dbState = "ok", detail = "";
+    try { await ensureSchema(db); } catch (e) { dbState = "error"; detail = String(e?.message || e).slice(0,300); }
+    return json(200,{ok:dbState==="ok",service:"solo-tinta-ink",build:BUILD,date:todayAR(),db:dbState,detail});
   }
+
+  await ensureSchema(db);
 
   if (method === "POST" && path === "login") {
     return adminLogin(request,db,await parseJSON(request));
@@ -594,7 +699,7 @@ async function handleAPI(request, env, ctx) {
   }
 
   if (method === "GET" && path === "portfolio") {
-    return json(200,{portfolio:await getPortfolio(db, request)});
+    return json(200,{portfolio:await getPortfolio(db)});
   }
 
   if (method === "GET" && path === "reference") {
@@ -670,6 +775,7 @@ async function handleAPI(request, env, ctx) {
   }
 
   if (method === "POST" && path === "admin/client/notes") {
+    if (!(await isAdmin(request,db))) return json(401,{error:"No autorizado"});
     const body = await parseJSON(request);
     const id = String(body.id || "");
     const notes = String(body.notes || "").trim();
@@ -861,8 +967,10 @@ Cualquier consulta avísame! Si te parece podemos coordinar una fecha y hora
   }
 
   if (method === "DELETE" && path === "admin/day-block") {
-    await db.prepare("DELETE FROM day_blocks WHERE date=?")
-      .bind(url.searchParams.get("date")).run();
+    const body = await parseJSON(request);
+    const date = String(body.date || url.searchParams.get("date") || "");
+    if (!validDate(date)) return json(400,{error:"Fecha inválida"});
+    await db.prepare("DELETE FROM day_blocks WHERE date=?").bind(date).run();
     return json(200,{ok:true});
   }
 
@@ -949,7 +1057,7 @@ Cualquier consulta avísame! Si te parece podemos coordinar una fecha y hora
     const body = await parseJSON(request);
     const id = String(body.id || '').trim();
     const description = String(body.description || '').trim();
-    const items = await getPortfolio(db, request);
+    const items = await getPortfolio(db);
     const item = items.find(x => x.id === id);
     if (!item) return json(404,{error:"Trabajo de portfolio no encontrado."});
     if (description.length > 500) return json(400,{error:"La descripción es demasiado larga."});
@@ -1100,7 +1208,7 @@ export default {
       return new Response("No encontrado",{status:404});
     } catch (e) {
       console.error(e);
-      return json(500,{error:"Error interno",diagnostic:"SOLOTINTA_INTERNAL_ERROR"});
+      return json(500,{error:"Error interno",detail:String(e?.message || e).slice(0,300),diagnostic:"SOLOTINTA_INTERNAL_ERROR"});
     }
   },
 
