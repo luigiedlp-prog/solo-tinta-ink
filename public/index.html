@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
-<title>Reservar · Solo Tinta Ink</title>
+<title>Pedir presupuesto · Solo Tinta Ink</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;0,700;1,400&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -67,10 +67,39 @@ body{
 .gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5px;background:var(--sep);}
 .tile{position:relative;aspect-ratio:1/1;overflow:hidden;background:linear-gradient(155deg,rgba(255,255,255,.08),rgba(0,0,0,.4));}
 .tile::after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 30% 20%,rgba(255,255,255,.1),transparent 55%);}
-.tile svg{position:absolute;inset:0;width:100%;height:100%;}
+.tile img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;transition:transform .35s ease,filter .35s ease;}
+.tile:active img{transform:scale(.985);}
 .tile .lbl{position:absolute;left:7px;bottom:6px;font-size:9px;color:var(--label3);font-weight:500;}
 .galleryFoot{padding:11px 14px;font-size:11.5px;color:var(--label3);}
+.gallery .tile{border:0;padding:0;color:inherit;font-family:inherit;cursor:pointer;}
 
+.gallery .tile:hover img{transform:scale(1.025);}
+
+/* Home journey */
+.process{display:grid;grid-template-columns:1fr;gap:0;}
+.processItem{display:flex;gap:13px;padding:15px 16px;border-bottom:1px solid var(--sep);align-items:flex-start;}
+.processItem:last-child{border-bottom:none;}
+.processMark{width:30px;height:30px;flex:0 0 auto;border-radius:10px;background:rgba(255,45,77,.14);border:1px solid rgba(255,45,77,.28);display:grid;place-items:center;color:var(--tint-bright);font-size:13px;font-weight:800;}
+.processItem b{display:block;font-size:13.5px;line-height:1.3;}
+.processItem span{display:block;margin-top:3px;color:var(--label2);font-size:12px;line-height:1.45;}
+.heroNote{display:flex;align-items:center;gap:8px;margin:14px 0 0;color:var(--label3);font-size:11.5px;line-height:1.4;}
+.heroNote svg{flex:0 0 auto;color:var(--tint-bright);}
+.portfolioLead{padding:14px 16px 13px;border-bottom:1px solid var(--sep);}
+.portfolioLead b{font-size:14px;}
+.portfolioLead span{display:block;margin-top:3px;color:var(--label3);font-size:11.5px;line-height:1.4;}
+.galleryFoot[hidden]{display:none;}
+@media (min-width:480px){.process{grid-template-columns:repeat(3,1fr);}.processItem{display:block;border-bottom:none;border-right:1px solid var(--sep);}.processItem:last-child{border-right:none;}.processMark{margin-bottom:9px;}}
+
+
+/* Quote form */
+.formIntro{padding:14px 16px;border-bottom:1px solid var(--sep);background:rgba(255,255,255,.025);}
+.formStep{display:flex;align-items:center;gap:11px;}
+.formStep>span{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:rgba(255,45,77,.18);border:1px solid rgba(255,45,77,.4);color:var(--tint-bright);font-size:12px;font-weight:800;flex:0 0 auto;}
+.formStep b{display:block;font-size:13px;font-weight:700;line-height:1.25;}
+.formStep small{display:block;margin-top:3px;color:var(--label3);font-size:11.5px;line-height:1.3;}
+.fieldHint{margin-top:6px;color:var(--label3);font-size:11px;line-height:1.4;}
+.rowStack.invalid{background:rgba(255,45,77,.08);animation:shake .22s linear 2;}
+@keyframes shake{25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
 /* Rows (grouped list) */
 .rowStack{display:flex;flex-direction:column;padding:12px 16px;border-bottom:1px solid var(--sep);}
 .rowStack:last-child{border-bottom:none;}
@@ -95,6 +124,16 @@ body{
 .btnPlain{background:none;color:var(--tint-bright);font-weight:600;font-size:16px;padding:12px;}
 .btnPlain:active{opacity:.5;}
 
+/* portfolio lightbox */
+.portfolioOverlay{position:fixed;inset:0;background:rgba(0,0,0,.82);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);display:none;align-items:center;justify-content:center;z-index:20;padding:18px;}
+.portfolioOverlay.show{display:flex;}
+.portfolioViewer{width:min(600px,100%);max-height:92vh;display:flex;flex-direction:column;gap:10px;}
+.portfolioImageWrap{position:relative;border:1px solid var(--sep-bright);border-radius:20px;overflow:hidden;background:#080808;box-shadow:0 30px 90px rgba(0,0,0,.8);}
+.portfolioImage{display:block;width:100%;max-height:72vh;object-fit:contain;background:#050505;}
+.portfolioClose{position:absolute;top:10px;right:10px;width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.2);background:rgba(0,0,0,.55);color:#fff;font-size:22px;line-height:1;}
+.portfolioNav{position:absolute;inset:0;display:flex;align-items:center;justify-content:space-between;padding:0 8px;pointer-events:none;}
+.portfolioNav button{pointer-events:auto;width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.2);background:rgba(0,0,0,.5);color:#fff;font-size:25px;}
+.portfolioCaption{padding:4px 6px 0;color:var(--label2);font-size:13px;line-height:1.45;text-align:center;}
 /* sheet */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);display:none;align-items:flex-end;justify-content:center;z-index:10;}
 .overlay.show{display:flex;}
@@ -136,35 +175,45 @@ body{
   <div class="largeTitle">
     <h1>Contanos tu idea</h1>
     <a class="btn btnFilled" href="#quoteForm" style="display:block;text-align:center;text-decoration:none;margin-top:18px">Pedir presupuesto</a>
-    <p>Te respondemos por WhatsApp con precio y duración estimada. No se cobra nada al enviar esto.</p>
+    <p>Contanos qué tenés en mente. Feli lo revisa y te responde por WhatsApp para hablar de tu tatuaje.</p>
+    <div class="heroNote"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18M3 12h18" stroke-linecap="round"/></svg><span>Enviar la consulta no reserva una fecha ni tiene costo.</span></div>
   </div>
 
-  <div class="sectionCaption">Trabajos recientes</div>
+  <div class="sectionCaption">Así funciona</div>
+  <div class="group process">
+    <div class="processItem"><div class="processMark">1</div><div><b>Contás tu idea</b><span>Nos das una primera idea, la zona y el tamaño aproximado.</span></div></div>
+    <div class="processItem"><div class="processMark">2</div><div><b>Lo hablan por WhatsApp</b><span>Feli revisa la propuesta y te pasa precio y duración.</span></div></div>
+    <div class="processItem"><div class="processMark">3</div><div><b>Eligen la fecha</b><span>Cuando está todo definido, Feli carga el turno en el estudio.</span></div></div>
+  </div>
+
+  <div class="sectionCaption">Trabajos</div>
   <div class="group">
-    <div class="gallery">
-      <div class="tile"><svg viewBox="0 0 100 100"><path d="M20 20 Q50 10 55 45 T50 90" fill="none" stroke="#6a6663" stroke-width="1.1"/></svg><span class="lbl">fineline</span></div>
-      <div class="tile"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="26" fill="none" stroke="#6a6663" stroke-width="1.1"/><circle cx="50" cy="50" r="16" fill="none" stroke="#525049" stroke-width="0.8"/></svg><span class="lbl">black&amp;grey</span></div>
-      <div class="tile"><svg viewBox="0 0 100 100"><path d="M18 80 L40 22 L62 80 M28 58 L52 58" fill="none" stroke="#6a6663" stroke-width="1.1"/></svg><span class="lbl">realismo</span></div>
-      <div class="tile"><svg viewBox="0 0 100 100"><path d="M12 25 Q50 55 20 80 Q50 55 88 85" fill="none" stroke="#6a6663" stroke-width="1.1"/></svg><span class="lbl">fineline</span></div>
-      <div class="tile"><svg viewBox="0 0 100 100"><rect x="28" y="22" width="44" height="58" rx="2" fill="none" stroke="#6a6663" stroke-width="1.1"/><line x1="28" y1="42" x2="72" y2="42" stroke="#525049" stroke-width="0.8"/></svg><span class="lbl">retrato</span></div>
-      <div class="tile"><svg viewBox="0 0 100 100"><path d="M20 35 Q50 18 80 35 Q62 60 80 85 Q50 76 20 85 Q38 60 20 35 Z" fill="none" stroke="#6a6663" stroke-width="1.1"/></svg><span class="lbl">black&amp;grey</span></div>
-    </div>
-    <div class="galleryFoot">Placeholders — acá van los trabajos reales de Felipe</div>
+    <div class="portfolioLead"><b>Algunos trabajos de Feli</b><span>Tocá una foto para verla en detalle.</span></div>
+    <div class="gallery" id="portfolioGallery"></div>
+    <div class="galleryFoot" id="portfolioEmpty">Todavía no hay trabajos cargados.</div>
   </div>
 
-  <div class="sectionCaption">Tu idea</div>
+  <div class="sectionCaption">Pedir presupuesto</div>
   <div class="group" id="quoteForm">
+    <div class="formIntro">
+      <div class="formStep"><div><b>Contanos qué querés hacer</b><small>No hace falta que tengas todo definido.</small></div></div>
+    </div>
     <div class="rowStack">
       <div class="rowLabel">Nombre</div>
-      <input type="text" placeholder="Tu nombre" id="fNombre">
+      <input type="text" placeholder="¿Cómo te llamás?" id="fNombre" autocomplete="name">
     </div>
     <div class="rowStack">
       <div class="rowLabel">WhatsApp</div>
-      <input type="tel" placeholder="11 2345 6789" id="fWa">
+      <input type="tel" placeholder="11 2345 6789" id="fWa" inputmode="tel" autocomplete="tel">
+      <div class="fieldHint">Por ahí te va a escribir Feli para hablar de la idea.</div>
+    </div>
+    <div class="rowStack">
+      <div class="rowLabel">¿Qué querés tatuarte?</div>
+      <textarea placeholder="Contame la idea, estilo, referencias o lo que ya tengas pensado..." id="fIdea" autocomplete="off"></textarea>
     </div>
     <div class="rowStack">
       <div class="rowLabel">Zona del cuerpo</div>
-      <input type="text" placeholder="Antebrazo, espalda..." id="fZona">
+      <input type="text" placeholder="Antebrazo, espalda, costillas..." id="fZona" autocomplete="off">
     </div>
     <div class="rowStack">
       <div class="rowLabel">Tamaño aproximado</div>
@@ -175,23 +224,32 @@ body{
         <div class="seg" data-v="No sé">No sé</div>
       </div>
     </div>
-    <div class="rowStack">
-      <div class="rowLabel">Descripción</div>
-      <textarea placeholder="Qué te gustaría tatuarte, estilo, referencias..." id="fIdea"></textarea>
-    </div>
   </div>
 
-  <div class="sectionCaption">Referencia visual</div>
+  <div class="sectionCaption">Si tenés una referencia</div>
   <div class="group">
     <div class="rowStack">
-      <div class="rowLabel">Link a una foto de referencia (opcional)</div>
-      <input type="url" placeholder="Pegá un link (WhatsApp, Drive, Instagram...)" id="fRef" inputmode="url">
+      <div class="rowLabel">Imagen de referencia</div>
+      <input type="file" id="fRef" accept="image/jpeg,image/png,image/webp" capture="environment">
+      <div class="fieldHint">Adjuntá una imagen. La comprimimos antes de enviarla; no se publica.</div>
     </div>
   </div>
-
-  <p class="footnote">Esto no reserva una fecha todavía — es una solicitud de presupuesto. Felipe coordina día y hora por WhatsApp una vez que te pasa el precio.</p>
+  <p class="footnote">Enviar esto no reserva una fecha. Feli revisa tu idea, te pasa precio y duración por WhatsApp y, si seguimos adelante, ahí coordinan el día y la hora.</p>
   <div style="padding:8px 0 26px"><button class="btn btnFilled" id="sendBtn" style="display:block;width:100%">Pedir presupuesto</button></div>
 
+</div>
+
+<div class="portfolioOverlay" id="portfolioOverlay" aria-hidden="true">
+  <div class="portfolioViewer" onclick="event.stopPropagation()">
+    <div class="portfolioImageWrap">
+      <img class="portfolioImage" id="portfolioImage" alt="Trabajo de Solo Tinta Ink">
+      <button class="portfolioClose" type="button" aria-label="Cerrar" onclick="closePortfolio()">×</button>
+      <div class="portfolioNav">
+        <button type="button" aria-label="Anterior" onclick="portfolioMove(-1)">‹</button>
+        <button type="button" aria-label="Siguiente" onclick="portfolioMove(1)">›</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <div class="overlay" id="infoOverlay" onclick="if(event.target===this) document.getElementById('infoOverlay').classList.remove('show')">
@@ -205,19 +263,19 @@ body{
   </div>
 </div>
 
-<div class="overlay" id="successOverlay" onclick="if(event.target===this) document.getElementById('successOverlay').classList.remove('show')">
+<div class="overlay" id="successOverlay" onclick="if(event.target===this) closeSuccess()">
   <div class="sheet">
     <div class="grabber"></div>
     <div class="sheetBody">
       <div class="checkIcon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg></div>
       <h3>Solicitud enviada</h3>
-      <p>Felipe va a revisar tu idea y te escribe por WhatsApp con precio y duración estimada.</p>
+      <p>Feli va a revisar tu idea y te escribe por WhatsApp con precio y duración estimada.</p>
       <div class="ticket">
         <div class="trow"><span>Zona</span><b id="tZona">—</b></div>
         <div class="trow"><span>Tamaño</span><b id="tTamano">Chico</b></div>
         <div class="trow"><span>Referencia</span><b id="tFile">Sin adjuntar</b></div>
       </div>
-      <button class="btn btnPlain" onclick="document.getElementById('successOverlay').classList.remove('show')">Volver</button>
+      <button class="btn btnPlain" onclick="document.getElementById('successOverlay').classList.remove('show')">Listo</button>
     </div>
   </div>
 </div>
@@ -230,11 +288,29 @@ async function api(path,opts={}){const r=await fetch(API+path,opts);let d={};try
 let size='Chico';
 document.getElementById('segmented').addEventListener('click',e=>{const seg=e.target.closest('.seg');if(!seg)return;document.querySelectorAll('.seg').forEach(s=>s.classList.remove('active'));seg.classList.add('active');size=seg.dataset.v});
 function flashInvalid(el){const row=el.closest('.rowStack');row.classList.add('invalid');setTimeout(()=>row.classList.remove('invalid'),700)}
+window.portfolioItems=[];
+let portfolioIndex=0;
+function paintPortfolio(){const x=window.portfolioItems[portfolioIndex];if(!x)return;const img=document.getElementById('portfolioImage');img.src=x.image_url;img.alt=x.description||'Trabajo de Solo Tinta Ink';}
+function openPortfolio(i){if(!window.portfolioItems[i])return;portfolioIndex=i;paintPortfolio();const o=document.getElementById('portfolioOverlay');o.classList.add('show');o.setAttribute('aria-hidden','false');document.body.style.overflow='hidden'}
+function portfolioMove(delta){if(!window.portfolioItems.length)return;portfolioIndex=(portfolioIndex+delta+window.portfolioItems.length)%window.portfolioItems.length;paintPortfolio()}
+function closePortfolio(){const o=document.getElementById('portfolioOverlay');o.classList.remove('show');o.setAttribute('aria-hidden','true');document.getElementById('portfolioImage').src='';document.body.style.overflow=''}
+document.getElementById('portfolioOverlay').addEventListener('click',e=>{if(e.target.id==='portfolioOverlay')closePortfolio()});
+document.addEventListener('keydown',e=>{if(!document.getElementById('portfolioOverlay').classList.contains('show'))return;if(e.key==='Escape')closePortfolio();if(e.key==='ArrowLeft')portfolioMove(-1);if(e.key==='ArrowRight')portfolioMove(1)});
+let portfolioTouchX=null;document.getElementById('portfolioOverlay').addEventListener('touchstart',e=>{portfolioTouchX=e.changedTouches[0].clientX},{passive:true});document.getElementById('portfolioOverlay').addEventListener('touchend',e=>{if(portfolioTouchX===null)return;const dx=e.changedTouches[0].clientX-portfolioTouchX;if(Math.abs(dx)>45)portfolioMove(dx<0?1:-1);portfolioTouchX=null},{passive:true});
+
 async function loadPublic(){
  try{
   const [s,p]=await Promise.all([api('/settings'),api('/portfolio')]);
-  document.querySelector('.gallery').innerHTML=p.portfolio?.length?p.portfolio.map(x=>`<div class="tile"><img src="${esc(x.image_url)}" alt="Trabajo de Solo Tinta Ink" style="width:100%;height:100%;object-fit:cover;border-radius:12px"><span class="lbl">${esc(x.description||'Solo Tinta Ink')}</span></div>`).join(''):'<div class="galleryFoot">Todavía no hay trabajos cargados.</div>';
-  document.querySelector('.galleryFoot')?.remove();
+  const gallery=document.getElementById('portfolioGallery');
+  const empty=document.getElementById('portfolioEmpty');
+  if(p.portfolio?.length){
+    empty.hidden=true;
+    gallery.innerHTML=p.portfolio.map((x,i)=>`<button class="tile" type="button" aria-label="Ver trabajo ${i+1}" onclick="openPortfolio(${i})"><img src="${esc(x.image_url)}" alt="Trabajo de Solo Tinta Ink" loading="lazy"></button>`).join('');
+    window.portfolioItems=p.portfolio;
+  }else{
+    empty.hidden=false;
+    gallery.innerHTML='';
+  }
 
   document.getElementById('navTitleText').textContent=s.studio_name||'Solo Tinta Ink';
 
@@ -247,14 +323,29 @@ async function loadPublic(){
  }catch(e){console.warn(e)}
 }
 document.getElementById('infoBtn').addEventListener('click',()=>document.getElementById('infoOverlay').classList.add('show'));
+function closeSuccess(){document.getElementById('successOverlay').classList.remove('show');size='Chico';document.querySelectorAll('.seg').forEach(s=>s.classList.toggle('active',s.dataset.v==='Chico'));document.getElementById('fNombre').focus()}
+document.querySelector('#successOverlay .btnPlain')?.addEventListener('click',closeSuccess);
 $('#sendBtn').addEventListener('click',async()=>{
- const nombre=$('#fNombre'),wa=$('#fWa'),idea=$('#fIdea'),ref=$('#fRef');let ok=true;[nombre,wa,idea].forEach(el=>{if(!el.value.trim()){flashInvalid(el);ok=false}});if(!ok)return;
- if(ref.value.trim()&&!/^https?:\/\//i.test(ref.value.trim())){flashInvalid(ref);alert('El link de referencia debe empezar con http:// o https://');return}
- const fd=new FormData();fd.append('name',nombre.value.trim());fd.append('whatsapp',wa.value.trim());fd.append('description',idea.value.trim());fd.append('body_area',$('#fZona').value.trim());fd.append('size',size);if(ref.value.trim())fd.append('reference_url',ref.value.trim());
+ const nombre=$('#fNombre'),wa=$('#fWa'),idea=$('#fIdea'),ref=$('#fRef');let ok=true;[nombre,wa,idea,ref].forEach(el=>{if(!el.value.trim()){flashInvalid(el);ok=false}});if(!ok)return;
+ const phone=wa.value.trim();if(phone.replace(/\D/g,'').length<8){flashInvalid(wa);alert('Revisá el número de WhatsApp.');return}
+ const file=ref.files[0];if(!file||!/^image\/(jpeg|png|webp)$/i.test(file.type)){flashInvalid(ref);alert('Adjuntá una imagen JPG, PNG o WebP.');return}
+ let reference_data;try{reference_data=await compressReference(file)}catch(e){alert(e.message);return}
+ const fd=new FormData();fd.append('name',nombre.value.trim());fd.append('whatsapp',phone);fd.append('description',idea.value.trim());fd.append('body_area',$('#fZona').value.trim());fd.append('size',size);fd.append('reference_data',reference_data);
  const btn=$('#sendBtn');btn.disabled=true;btn.textContent='Enviando…';
- try{await api('/quote',{method:'POST',body:fd});$('#tZona').textContent=$('#fZona').value||'—';$('#tTamano').textContent=size;$('#tFile').textContent=ref.value.trim()?'Con referencia':'Sin adjuntar';$('#successOverlay').classList.add('show');document.querySelectorAll('#fNombre,#fWa,#fZona,#fIdea,#fRef').forEach(x=>x.value='');}
+ try{await api('/quote',{method:'POST',body:fd});$('#tZona').textContent=$('#fZona').value||'—';$('#tTamano').textContent=size;$('#tFile').textContent='Referencia adjunta';$('#successOverlay').classList.add('show');document.querySelectorAll('#fNombre,#fWa,#fZona,#fIdea').forEach(x=>x.value='');ref.value='';}
  catch(e){alert(e.message)}finally{btn.disabled=false;btn.textContent='Pedir presupuesto'}
 });
+async function compressReference(file){
+ const maxSide=1800,maxDataLength=960000;
+ const img=await new Promise((resolve,reject)=>{const u=URL.createObjectURL(file);const im=new Image();im.onload=()=>{URL.revokeObjectURL(u);resolve(im)};im.onerror=()=>{URL.revokeObjectURL(u);reject(new Error('No se pudo leer la imagen.'))};im.src=u});
+ const scale=Math.min(1,maxSide/Math.max(img.naturalWidth,img.naturalHeight));
+ const c=document.createElement('canvas');c.width=Math.max(1,Math.round(img.naturalWidth*scale));c.height=Math.max(1,Math.round(img.naturalHeight*scale));
+ const ctx=c.getContext('2d');ctx.drawImage(img,0,0,c.width,c.height);
+ let q=.78,data='';do{data=c.toDataURL('image/webp',q);q-=.08}while(data.length>maxDataLength&&q>=.42);
+ if(data.length>maxDataLength)throw new Error('La imagen sigue siendo demasiado pesada. Elegí una foto más liviana.');
+ return data;
+}
+
 loadPublic();
 </script>
 </body>
