@@ -928,10 +928,10 @@ async function handleAPI(request, env, ctx) {
       ok:true,
       whatsapp:q.whatsapp,
       message:
-`¡Hola ${q.name}! Soy Feli de Solo Tinta Ink
-Te paso el presupuesto para tu tatuaje: $${price}
+`¡Hola ${q.name}! Te escribimos de Solo Tinta Ink.
+Te pasamos el presupuesto para tu tatuaje: $${Number(price).toLocaleString("es-AR")}
 Duración estimada: ${Math.floor(duration/60)}:${String(duration%60).padStart(2,"0")} horas
-Cualquier consulta avísame! Si te parece podemos coordinar una fecha y hora
+¡Cualquier consulta avisanos! Si te parece, podemos coordinar una fecha y hora.
 ¡Muchas gracias!`
     });
   }
