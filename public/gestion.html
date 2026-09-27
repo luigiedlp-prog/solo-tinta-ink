@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <title>Gestión · Solo Tinta Ink</title>
+<link rel="manifest" href="/manifest-gestion.webmanifest">
+<link rel="apple-touch-icon" href="/icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="STI Gestión">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;0,700;1,400&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -268,6 +274,10 @@ body{margin:0;color:var(--label);font-family:var(--sans);min-height:100vh;-webki
 .sheet .rowStack textarea{line-height:1.4;min-height:96px;resize:none;overflow:hidden;display:block}
 .sheet .rowStack input:focus,.sheet .rowStack textarea:focus,.sheet .rowStack select:focus{border-color:var(--tint-bright)!important}
 .sheetHint{font-size:12.5px;color:var(--label3);margin-top:7px;line-height:1.35}
+.pushBox{padding:2px 0 4px;}
+.pushBox>b{display:block;font-size:14px;font-weight:700;}
+.pushBox p{margin:5px 0 10px;color:var(--label2);font-size:12.5px;line-height:1.45;}
+.pushSlot:empty{display:none;}
 </style>
 </head>
 <body>
@@ -314,7 +324,7 @@ function render(){
  const np=D.quotes.filter(q=>q.status==='pending_quote').length;
  const tabs=['Presupuestos','Calendario','Clientes','Portfolio','Finanzas','Ajustes'];
  app.innerHTML=`<div class="navbar"><div class="navTitle">${tab}</div><div class="navSub">${tab==='Presupuestos'&&np?np+(np>1?' nuevos':' nuevo'):''}</div></div><div class="screen active" id="live"></div><div class="tabbar">${tabs.map(t=>`<button class="tab ${tab===t?'active':''}" onclick="showTab('${t}')">${ICO[t]}<span>${t}</span>${t==='Presupuestos'&&np?`<div class="tabBadge">${np}</div>`:''}</button>`).join('')}</div>`;
- const live=$('#live');if(tab==='Presupuestos')quotesView(live);if(tab==='Calendario')calendarView(live);if(tab==='Clientes')clientsView(live);if(tab==='Portfolio')portfolioView(live);if(tab==='Finanzas')financeView(live);if(tab==='Ajustes')settingsView(live)
+ const live=$('#live');if(tab==='Presupuestos')quotesView(live);if(tab==='Calendario')calendarView(live);if(tab==='Clientes')clientsView(live);if(tab==='Portfolio')portfolioView(live);if(tab==='Finanzas')financeView(live);if(tab==='Ajustes')settingsView(live);window.pushRefreshUI&&pushRefreshUI()
 }
 function quotesView(el){
  const pending=D.quotes.filter(q=>q.status==='pending_quote'),waiting=D.quotes.filter(q=>q.status==='awaiting_confirmation'),disc=D.quotes.filter(q=>q.status==='discarded').slice(0,20);
@@ -412,7 +422,7 @@ function setFin(v){finTab=v;render()}
 const FIELDS={studio_name:{l:'Nombre del estudio'},artist_name:{l:'Nombre del artista'},description:{l:'Descripción',area:1,h:'Se muestra en la página pública.'},address:{l:'Dirección'},maps_url:{l:'Enlace de Google Maps',h:'Pegá acá el link de Google Maps del estudio.'},instagram:{l:'Instagram',h:'Ejemplo: @solo.tinta.ink'},safety_info:{l:'Garantías de seguridad e higiene',area:1,h:'Aparece en el pop-up de información de la página pública.'},contact_info:{l:'Contacto',area:1,h:'Aparece en el pop-up de información de la página pública.'}};
 function editField(k){const f=FIELDS[k];sheet(f.l,[{id:'v',label:f.l,area:f.area,value:D.settings[k]||'',hint:f.h}],'Guardar',async v=>{if((k==='studio_name'||k==='artist_name')&&!v.v)throw new Error('No puede quedar vacío.');await post('/admin/settings',{[k]:v.v})})}
 function settingsView(el){const item=k=>{const f=FIELDS[k],val=D.settings[k];return `<div class="settingRow" onclick="editField('${k}')"><div class="settingText" style="min-width:0;flex:1"><div style="font-size:12.5px;color:var(--label3);margin-bottom:2px">${f.l}</div><div style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word;${val?'':'color:var(--label3)'}">${esc(val||'Tocá para completar')}</div></div>${CHEV}</div>`};const row=(i,t,fn,cls='')=>`<div class="settingRow ${cls}" onclick="${fn}">${SICO[i]}<div class="settingText">${t}</div>${cls?'':CHEV}</div>`;
- el.innerHTML=`<div class="sectionCaption">Estudio · tocá lo que quieras cambiar</div><div class="group">${['studio_name','artist_name','description','address','maps_url','instagram'].map(item).join('')}</div><div class="sectionCaption">Información del estudio (página pública)</div><div class="group">${['safety_info','contact_info'].map(item).join('')}</div><div class="sectionCaption">Seguridad</div><div class="group">${row(3,'Cambiar PIN','changePin()')}</div><div class="sectionCaption">&nbsp;</div><div class="group">${row(4,'Cerrar sesión','logout()','danger')}</div><div style="text-align:center;color:var(--label3);font-size:12px;padding:18px 0 4px">Gestión · versión ${BUILD}</div>`}
+ el.innerHTML=`<div class="sectionCaption">Estudio · tocá lo que quieras cambiar</div><div class="group">${['studio_name','artist_name','description','address','maps_url','instagram'].map(item).join('')}</div><div class="sectionCaption">Información del estudio (página pública)</div><div class="group">${['safety_info','contact_info'].map(item).join('')}</div><div class="sectionCaption">Notificaciones</div><div class="group" style="padding:14px 16px"><div class="pushSlot" data-kind="card"></div></div><div class="sectionCaption">Seguridad</div><div class="group">${row(3,'Cambiar PIN','changePin()')}</div><div class="sectionCaption">&nbsp;</div><div class="group">${row(4,'Cerrar sesión','logout()','danger')}</div><div style="text-align:center;color:var(--label3);font-size:12px;padding:18px 0 4px">Gestión · versión ${BUILD}</div>`}
 /* ---------- Hojas (pop-ups del diseño) ---------- */
 const SELSTYLE='';
 function closeSheet(){document.getElementById('genOverlay').classList.remove('show')}
@@ -452,6 +462,105 @@ function changePin(){sheet('Cambiar PIN',[{id:'pin',label:'Nuevo PIN de 4 dígit
 async function logout(){await api('/logout',{method:'POST'});location.reload()}
 (async()=>{try{const h=await fetch('/api/health',{cache:'no-store'}).then(r=>r.json());if(h.build&&h.build!==BUILD&&!/[?&]b=/.test(location.search)){location.replace(location.pathname+'?b='+Date.now());return}}catch{}})();
 (async()=>{try{await load();document.getElementById('loginScreen').style.display='none'}catch(e){renderDots()}})();
+</script>
+<script>
+(function(){
+const ROLE='admin',ADMIN=ROLE==='admin';
+const P=window.PUSH={role:ROLE,state:'checking',key:null,synced:false};
+const ua=navigator.userAgent||'';
+const isIOS=/iphone|ipad|ipod/i.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+const standalone=(window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true;
+const b64=s=>{s=String(s).replace(/-/g,'+').replace(/_/g,'/');s+='='.repeat((4-s.length%4)%4);const r=atob(s),u=new Uint8Array(r.length);for(let i=0;i<r.length;i++)u[i]=r.charCodeAt(i);return u};
+const post=(url,body)=>api(url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body||{})});
+const hasWA=()=>typeof window.clientWA==='string'&&window.clientWA.length>=10;
+const say=t=>{try{alert(t)}catch(e){}};
+const btn=(label,fn,primary)=>`<button class="btn ${primary?'btnFilled':'btnPlain'}" style="margin-top:8px" onclick="${fn}">${label}</button>`;
+const box=(t,p,b)=>`<div class="pushBox"><b>${t}</b><p>${p}</p>${b||''}</div>`;
+const T=ADMIN?{
+  offT:'🔔 Activá los avisos',offP:'Recibí en este teléfono cada solicitud de presupuesto nueva y un recordatorio 1 hora antes de cada turno.',
+  onT:'✅ Avisos activados',onP:'Este teléfono recibe los avisos de Gestión.'
+}:{
+  offT:'🔔 Recibí avisos de tu turno',offP:'Te avisamos 1 hora antes de tu turno y si se cancela.',
+  onT:'✅ Avisos activados',onP:'Te vamos a avisar 1 hora antes de tu turno y si se cancela.'
+};
+function html(kind){
+  const s=P.state,card=kind==='card';
+  if(s==='off')return box(T.offT,T.offP,btn('Activar avisos','PUSH.enable()',true));
+  if(s==='ios-install')return box('📲 Instalá la página para recibir avisos','En iPhone los avisos funcionan desde la pantalla de inicio: tocá el botón Compartir (el cuadrado con la flecha) → Agregar a inicio y abrí la página desde ese ícono.');
+  if(s==='on'){
+    return box(T.onT,T.onP,card?(ADMIN?btn('Enviar aviso de prueba','PUSH.test()',false):'')+btn('Desactivar avisos en este teléfono','PUSH.disable()',false):'');
+  }
+  if(!card)return '';
+  if(s==='denied')return box('🔕 Avisos bloqueados','Las notificaciones de este sitio están bloqueadas. Activalas desde los ajustes del teléfono o del navegador y volvé a abrir esta página.');
+  if(s==='off-server')return box('🔔 Avisos','Todavía no están configurados en el servidor.');
+  if(s==='unsupported')return box('🔔 Avisos','Este navegador no permite recibir avisos. Probá con Chrome en Android, o desde la pantalla de inicio en iPhone.');
+  return '';
+}
+P.refresh=function(){
+  document.querySelectorAll('.pushSlot').forEach(el=>{el.innerHTML=html(el.dataset.kind||'banner')});
+  if(P.state==='on'&&!P.synced&&(ADMIN||hasWA())){P.synced=true;sync()}
+};
+window.pushRefreshUI=P.refresh;
+async function sync(){
+  try{
+    const reg=await navigator.serviceWorker.ready,sub=await reg.pushManager.getSubscription();if(!sub)return;
+    if(ADMIN)await post('/api/admin/push/subscribe',{subscription:sub.toJSON()});
+    else await post('/api/push/subscribe-client',{subscription:sub.toJSON(),whatsapp:window.clientWA});
+  }catch(e){}
+}
+async function init(){
+  try{
+    if(!('serviceWorker' in navigator)){P.state=isIOS&&!standalone?'ios-install':'unsupported';return P.refresh()}
+    navigator.serviceWorker.register('/sw.js').catch(()=>{});
+    if(!('PushManager' in window)||!('Notification' in window)){P.state=isIOS&&!standalone?'ios-install':'unsupported';return P.refresh()}
+    const k=await api('/api/push/key');P.key=k.key;
+    if(!P.key){P.state='off-server';return P.refresh()}
+    if(Notification.permission==='denied'){P.state='denied';return P.refresh()}
+    const reg=await navigator.serviceWorker.ready,sub=await reg.pushManager.getSubscription();
+    P.state=sub&&Notification.permission==='granted'?'on':'off';
+  }catch(e){P.state='unsupported'}
+  P.refresh();
+}
+P.enable=async function(){
+  try{
+    if(!ADMIN&&!hasWA()){say('Buscá primero tu turno con tu WhatsApp.');return}
+    const perm=await Notification.requestPermission();
+    if(perm!=='granted'){P.state=perm==='denied'?'denied':'off';return P.refresh()}
+    const reg=await navigator.serviceWorker.ready;let sub=await reg.pushManager.getSubscription();
+    if(!sub){
+      const opts={userVisibleOnly:true,applicationServerKey:b64(P.key)};
+      try{sub=await reg.pushManager.subscribe(opts)}catch(e){const old=await reg.pushManager.getSubscription();if(old)await old.unsubscribe();sub=await reg.pushManager.subscribe(opts)}
+    }
+    if(ADMIN)await post('/api/admin/push/subscribe',{subscription:sub.toJSON()});
+    else await post('/api/push/subscribe-client',{subscription:sub.toJSON(),whatsapp:window.clientWA});
+    P.state='on';P.synced=true;
+  }catch(e){alert('No se pudieron activar los avisos: '+(e&&e.message||e))}
+  P.refresh();
+};
+P.disable=async function(){
+  try{
+    const reg=await navigator.serviceWorker.ready,sub=await reg.pushManager.getSubscription();
+    if(sub){try{await post(ADMIN?'/api/admin/push/unsubscribe':'/api/push/unsubscribe-client',{endpoint:sub.endpoint,whatsapp:ADMIN?undefined:window.clientWA})}catch(e){}await sub.unsubscribe()}
+    P.state='off';P.synced=false;
+  }catch(e){alert('No se pudieron desactivar los avisos: '+(e&&e.message||e))}
+  P.refresh();
+};
+P.test=async function(){
+  try{const r=await post('/api/admin/push/test');say(r.sent?'Aviso enviado. Tiene que llegarte en unos segundos.':'No hay ningún teléfono registrado. Desactivá y volvé a activar los avisos.')}catch(e){alert(e.message)}
+};
+// Al llegar un push mientras la página está abierta: refresca los datos sin pisar lo que Feli esté editando.
+function adminReload(){
+  if(!ADMIN)return;
+  const busy=document.getElementById('genOverlay')?.classList.contains('show');
+  if(busy||typeof load!=='function')return;
+  load().catch(()=>{});
+}
+function clientReload(){if(!ADMIN&&typeof window.refreshMyAppointment==='function')window.refreshMyAppointment()}
+if('serviceWorker' in navigator)navigator.serviceWorker.addEventListener('message',e=>{if(e.data&&e.data.type==='push'){adminReload();clientReload()}});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){adminReload();clientReload()}});
+init();
+})();
+
 </script>
 </body>
 </html>

@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <title>Pedir presupuesto · Solo Tinta Ink</title>
+<link rel="manifest" href="/manifest-reservar.webmanifest">
+<link rel="apple-touch-icon" href="/icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Solo Tinta Ink">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;0,700;1,400&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -157,6 +163,11 @@ body{
 .trow:last-child{border-bottom:none;}
 .trow span{color:var(--label2);}
 .trow b{font-weight:600;}
+.pushBox{padding:2px 0 4px;}
+.pushBox>b{display:block;font-size:14px;font-weight:700;}
+.pushBox p{margin:5px 0 10px;color:var(--label2);font-size:12.5px;line-height:1.45;}
+.pushSlot:empty{display:none;}
+.myTurnResult:empty{display:none;}
 </style>
 </head>
 <body>
@@ -238,6 +249,17 @@ body{
   </div>
   <p class="footnote">Enviar esto no reserva una fecha. Revisamos tu idea, te pasamos precio y duración por WhatsApp y, si seguimos adelante, ahí coordinamos el día y la hora.</p>
   <div style="padding:8px 0 26px"><button class="btn btnFilled" id="sendBtn" style="display:block;width:100%">Pedir presupuesto</button></div>
+
+  <div class="sectionCaption">¿Ya tenés un turno agendado?</div>
+  <div class="group">
+    <div class="rowStack">
+      <div class="rowLabel">WhatsApp</div>
+      <input type="tel" placeholder="11 2345 6789" id="myWa" inputmode="tel" autocomplete="tel">
+      <div class="fieldHint">Buscamos tu próximo turno para que actives los avisos.</div>
+    </div>
+    <div style="padding:0 16px 14px"><button class="btn btnPlain" id="myWaBtn" style="width:100%;text-align:center;border:1px solid var(--sep-bright);border-radius:15px">Buscar mi turno</button></div>
+    <div class="myTurnResult" id="myWaResult"></div>
+  </div>
 
 </div>
 
@@ -326,6 +348,29 @@ async function loadPublic(){
  }catch(e){console.warn(e)}
 }
 document.getElementById('infoBtn').addEventListener('click',()=>document.getElementById('infoOverlay').classList.add('show'));
+window.clientWA=null;
+async function searchMyAppointment(silent){
+ const phone=window.clientWA||$('#myWa').value.trim();
+ if(!phone)return;
+ try{
+  const r=await api('/push/lookup',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({whatsapp:phone})});
+  const box=$('#myWaResult');
+  if(!r.found){window.clientWA=null;if(!silent)box.innerHTML='<p style="padding:0 16px 14px;margin:0;color:var(--label3);font-size:13px">No encontramos un turno agendado con ese WhatsApp. Si ya coordinaste por WhatsApp, puede tardar un rato en cargarse en el sistema.</p>';return}
+  window.clientWA=String(phone).replace(/\D/g,'');
+  const fecha=new Date(r.date+'T12:00:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'});
+  box.innerHTML=`<div class="rowStack" style="border-top:1px solid var(--sep)"><div class="rowLabel">Tu próximo turno</div><div style="font-size:15px;font-weight:600">${esc(fecha)} a las ${esc(String(r.start_time).slice(0,5))}</div></div><div style="padding:0 16px 14px"><div class="pushSlot" data-kind="card"></div></div>`;
+  window.pushRefreshUI&&pushRefreshUI();
+ }catch(e){if(!silent)alert(e.message)}
+}
+window.refreshMyAppointment=()=>searchMyAppointment(true);
+$('#myWaBtn').addEventListener('click',async()=>{
+ const inp=$('#myWa'),phone=inp.value.trim();
+ if(phone.replace(/\D/g,'').length<10){flashInvalid(inp);alert('Revisá el número de WhatsApp.');return}
+ window.clientWA=phone;
+ const btn=$('#myWaBtn'),orig=btn.textContent;btn.disabled=true;btn.textContent='Buscando…';
+ await searchMyAppointment(false);
+ btn.disabled=false;btn.textContent=orig;
+});
 function closeSuccess(){document.getElementById('successOverlay').classList.remove('show');size='Chico';document.querySelectorAll('.seg').forEach(s=>s.classList.toggle('active',s.dataset.v==='Chico'));document.getElementById('fNombre').focus()}
 document.querySelector('#successOverlay .btnPlain')?.addEventListener('click',closeSuccess);
 $('#sendBtn').addEventListener('click',async()=>{
@@ -337,6 +382,105 @@ $('#sendBtn').addEventListener('click',async()=>{
  catch(e){alert(e.message)}finally{btn.disabled=false;btn.textContent='Pedir presupuesto'}
 });
 loadPublic();
+</script>
+<script>
+(function(){
+const ROLE='client',ADMIN=ROLE==='admin';
+const P=window.PUSH={role:ROLE,state:'checking',key:null,synced:false};
+const ua=navigator.userAgent||'';
+const isIOS=/iphone|ipad|ipod/i.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+const standalone=(window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true;
+const b64=s=>{s=String(s).replace(/-/g,'+').replace(/_/g,'/');s+='='.repeat((4-s.length%4)%4);const r=atob(s),u=new Uint8Array(r.length);for(let i=0;i<r.length;i++)u[i]=r.charCodeAt(i);return u};
+const post=(url,body)=>api(url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body||{})});
+const hasWA=()=>typeof window.clientWA==='string'&&window.clientWA.length>=10;
+const say=t=>{try{alert(t)}catch(e){}};
+const btn=(label,fn,primary)=>`<button class="btn ${primary?'btnFilled':'btnPlain'}" style="margin-top:8px" onclick="${fn}">${label}</button>`;
+const box=(t,p,b)=>`<div class="pushBox"><b>${t}</b><p>${p}</p>${b||''}</div>`;
+const T=ADMIN?{
+  offT:'🔔 Activá los avisos',offP:'Recibí en este teléfono cada solicitud de presupuesto nueva y un recordatorio 1 hora antes de cada turno.',
+  onT:'✅ Avisos activados',onP:'Este teléfono recibe los avisos de Gestión.'
+}:{
+  offT:'🔔 Recibí avisos de tu turno',offP:'Te avisamos 1 hora antes de tu turno y si se cancela.',
+  onT:'✅ Avisos activados',onP:'Te vamos a avisar 1 hora antes de tu turno y si se cancela.'
+};
+function html(kind){
+  const s=P.state,card=kind==='card';
+  if(s==='off')return box(T.offT,T.offP,btn('Activar avisos','PUSH.enable()',true));
+  if(s==='ios-install')return box('📲 Instalá la página para recibir avisos','En iPhone los avisos funcionan desde la pantalla de inicio: tocá el botón Compartir (el cuadrado con la flecha) → Agregar a inicio y abrí la página desde ese ícono.');
+  if(s==='on'){
+    return box(T.onT,T.onP,card?(ADMIN?btn('Enviar aviso de prueba','PUSH.test()',false):'')+btn('Desactivar avisos en este teléfono','PUSH.disable()',false):'');
+  }
+  if(!card)return '';
+  if(s==='denied')return box('🔕 Avisos bloqueados','Las notificaciones de este sitio están bloqueadas. Activalas desde los ajustes del teléfono o del navegador y volvé a abrir esta página.');
+  if(s==='off-server')return box('🔔 Avisos','Todavía no están configurados en el servidor.');
+  if(s==='unsupported')return box('🔔 Avisos','Este navegador no permite recibir avisos. Probá con Chrome en Android, o desde la pantalla de inicio en iPhone.');
+  return '';
+}
+P.refresh=function(){
+  document.querySelectorAll('.pushSlot').forEach(el=>{el.innerHTML=html(el.dataset.kind||'banner')});
+  if(P.state==='on'&&!P.synced&&(ADMIN||hasWA())){P.synced=true;sync()}
+};
+window.pushRefreshUI=P.refresh;
+async function sync(){
+  try{
+    const reg=await navigator.serviceWorker.ready,sub=await reg.pushManager.getSubscription();if(!sub)return;
+    if(ADMIN)await post('/api/admin/push/subscribe',{subscription:sub.toJSON()});
+    else await post('/api/push/subscribe-client',{subscription:sub.toJSON(),whatsapp:window.clientWA});
+  }catch(e){}
+}
+async function init(){
+  try{
+    if(!('serviceWorker' in navigator)){P.state=isIOS&&!standalone?'ios-install':'unsupported';return P.refresh()}
+    navigator.serviceWorker.register('/sw.js').catch(()=>{});
+    if(!('PushManager' in window)||!('Notification' in window)){P.state=isIOS&&!standalone?'ios-install':'unsupported';return P.refresh()}
+    const k=await api('/api/push/key');P.key=k.key;
+    if(!P.key){P.state='off-server';return P.refresh()}
+    if(Notification.permission==='denied'){P.state='denied';return P.refresh()}
+    const reg=await navigator.serviceWorker.ready,sub=await reg.pushManager.getSubscription();
+    P.state=sub&&Notification.permission==='granted'?'on':'off';
+  }catch(e){P.state='unsupported'}
+  P.refresh();
+}
+P.enable=async function(){
+  try{
+    if(!ADMIN&&!hasWA()){say('Buscá primero tu turno con tu WhatsApp.');return}
+    const perm=await Notification.requestPermission();
+    if(perm!=='granted'){P.state=perm==='denied'?'denied':'off';return P.refresh()}
+    const reg=await navigator.serviceWorker.ready;let sub=await reg.pushManager.getSubscription();
+    if(!sub){
+      const opts={userVisibleOnly:true,applicationServerKey:b64(P.key)};
+      try{sub=await reg.pushManager.subscribe(opts)}catch(e){const old=await reg.pushManager.getSubscription();if(old)await old.unsubscribe();sub=await reg.pushManager.subscribe(opts)}
+    }
+    if(ADMIN)await post('/api/admin/push/subscribe',{subscription:sub.toJSON()});
+    else await post('/api/push/subscribe-client',{subscription:sub.toJSON(),whatsapp:window.clientWA});
+    P.state='on';P.synced=true;
+  }catch(e){alert('No se pudieron activar los avisos: '+(e&&e.message||e))}
+  P.refresh();
+};
+P.disable=async function(){
+  try{
+    const reg=await navigator.serviceWorker.ready,sub=await reg.pushManager.getSubscription();
+    if(sub){try{await post(ADMIN?'/api/admin/push/unsubscribe':'/api/push/unsubscribe-client',{endpoint:sub.endpoint,whatsapp:ADMIN?undefined:window.clientWA})}catch(e){}await sub.unsubscribe()}
+    P.state='off';P.synced=false;
+  }catch(e){alert('No se pudieron desactivar los avisos: '+(e&&e.message||e))}
+  P.refresh();
+};
+P.test=async function(){
+  try{const r=await post('/api/admin/push/test');say(r.sent?'Aviso enviado. Tiene que llegarte en unos segundos.':'No hay ningún teléfono registrado. Desactivá y volvé a activar los avisos.')}catch(e){alert(e.message)}
+};
+// Al llegar un push mientras la página está abierta: refresca los datos sin pisar lo que Feli esté editando.
+function adminReload(){
+  if(!ADMIN)return;
+  const busy=document.getElementById('genOverlay')?.classList.contains('show');
+  if(busy||typeof load!=='function')return;
+  load().catch(()=>{});
+}
+function clientReload(){if(!ADMIN&&typeof window.refreshMyAppointment==='function')window.refreshMyAppointment()}
+if('serviceWorker' in navigator)navigator.serviceWorker.addEventListener('message',e=>{if(e.data&&e.data.type==='push'){adminReload();clientReload()}});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){adminReload();clientReload()}});
+init();
+})();
+
 </script>
 </body>
 </html>
