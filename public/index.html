@@ -424,8 +424,8 @@ window.pushRefreshUI=P.refresh;
 async function sync(){
   try{
     const reg=await navigator.serviceWorker.ready,sub=await reg.pushManager.getSubscription();if(!sub)return;
-    if(ADMIN)await post('/api/admin/push/subscribe',{subscription:sub.toJSON()});
-    else await post('/api/push/subscribe-client',{subscription:sub.toJSON(),whatsapp:window.clientWA});
+    if(ADMIN)await post('/admin/push/subscribe',{subscription:sub.toJSON()});
+    else await post('/push/subscribe-client',{subscription:sub.toJSON(),whatsapp:window.clientWA});
   }catch(e){}
 }
 async function init(){
@@ -433,7 +433,7 @@ async function init(){
     if(!('serviceWorker' in navigator)){P.state=isIOS&&!standalone?'ios-install':'unsupported';return P.refresh()}
     navigator.serviceWorker.register('/sw.js').catch(()=>{});
     if(!('PushManager' in window)||!('Notification' in window)){P.state=isIOS&&!standalone?'ios-install':'unsupported';return P.refresh()}
-    const k=await api('/api/push/key');P.key=k.key;
+    const k=await api('/push/key');P.key=k.key;
     if(!P.key){P.state='off-server';return P.refresh()}
     if(Notification.permission==='denied'){P.state='denied';return P.refresh()}
     const reg=await navigator.serviceWorker.ready,sub=await reg.pushManager.getSubscription();
@@ -451,8 +451,8 @@ P.enable=async function(){
       const opts={userVisibleOnly:true,applicationServerKey:b64(P.key)};
       try{sub=await reg.pushManager.subscribe(opts)}catch(e){const old=await reg.pushManager.getSubscription();if(old)await old.unsubscribe();sub=await reg.pushManager.subscribe(opts)}
     }
-    if(ADMIN)await post('/api/admin/push/subscribe',{subscription:sub.toJSON()});
-    else await post('/api/push/subscribe-client',{subscription:sub.toJSON(),whatsapp:window.clientWA});
+    if(ADMIN)await post('/admin/push/subscribe',{subscription:sub.toJSON()});
+    else await post('/push/subscribe-client',{subscription:sub.toJSON(),whatsapp:window.clientWA});
     P.state='on';P.synced=true;
   }catch(e){alert('No se pudieron activar los avisos: '+(e&&e.message||e))}
   P.refresh();
@@ -460,13 +460,13 @@ P.enable=async function(){
 P.disable=async function(){
   try{
     const reg=await navigator.serviceWorker.ready,sub=await reg.pushManager.getSubscription();
-    if(sub){try{await post(ADMIN?'/api/admin/push/unsubscribe':'/api/push/unsubscribe-client',{endpoint:sub.endpoint,whatsapp:ADMIN?undefined:window.clientWA})}catch(e){}await sub.unsubscribe()}
+    if(sub){try{await post(ADMIN?'/admin/push/unsubscribe':'/push/unsubscribe-client',{endpoint:sub.endpoint,whatsapp:ADMIN?undefined:window.clientWA})}catch(e){}await sub.unsubscribe()}
     P.state='off';P.synced=false;
   }catch(e){alert('No se pudieron desactivar los avisos: '+(e&&e.message||e))}
   P.refresh();
 };
 P.test=async function(){
-  try{const r=await post('/api/admin/push/test');say(r.sent?'Aviso enviado. Tiene que llegarte en unos segundos.':'No hay ningún teléfono registrado. Desactivá y volvé a activar los avisos.')}catch(e){alert(e.message)}
+  try{const r=await post('/admin/push/test');say(r.sent?'Aviso enviado. Tiene que llegarte en unos segundos.':'No hay ningún teléfono registrado. Desactivá y volvé a activar los avisos.')}catch(e){alert(e.message)}
 };
 // Al llegar un push mientras la página está abierta: refresca los datos sin pisar lo que Feli esté editando.
 function adminReload(){
